@@ -15,7 +15,7 @@ ARSandbox:
           - A note on water simulation: installation/hardware/note_on_water_simulation.md
       - Software:
           - installation/software/index.md
-          - Manual installation guide: installation/software/manual_install.md
           - Simple installation guide: installation/software/simple_install.md
+          - Manual installation guide: installation/software/manual_install.md
           - Advanced installation guide: installation/software/advanced_install.md
   - ARSandbox in action: in_action.md
