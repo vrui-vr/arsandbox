@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #define REMOTECLIENT_INCLUDED
 
 #include <Threads/TripleBuffer.h>
+#include <Geometry/Box.h>
 
 #include "Types.h"
 #include "Pixel.h"
@@ -38,6 +39,7 @@ class RemoteClient
 	/* Embedded classes: */
 	public:
 	typedef float GridScalar; // Type for values stored in property grids
+	typedef Geometry::Box<GridScalar,2> GridBox; // Type for 2D grid extents
 	
 	private:
 	struct GridBuffers // Structure representing a triplet of property grids
@@ -49,25 +51,11 @@ class RemoteClient
 		GridScalar* snowHeight;
 		
 		/* Constructors and destructors: */
-		GridBuffers(void) // Creates an uninitialized grid buffer
-			:bathymetry(0),waterLevel(0),snowHeight(0)
-			{
-			}
-		~GridBuffers(void)
-			{
-			/* Release all allocated resources: */
-			delete[] bathymetry;
-			delete[] waterLevel;
-			delete[] snowHeight;
-			}
+		GridBuffers(void); // Creates an uninitialized grid buffer
+		~GridBuffers(void);
 		
 		/* Methods: */
-		void init(const Size& gridSize) // Initializes the property grids based on a given grid size
-			{
-			bathymetry=new GridScalar[(gridSize[1]-1)*(gridSize[0]-1)]; // Bathymetry grid is vertex-centered and smaller by one in both directions
-			waterLevel=new GridScalar[gridSize[1]*gridSize[0]]; // Water level grid is cell-centered
-			snowHeight=new GridScalar[gridSize[1]*gridSize[0]]; // Snow height grid is cell-centered
-			}
+		void init(const Size& gridSize); // Initializes the property grids based on the given cell-centered grid size
 		};
 	
 	/* Elements: */
@@ -81,11 +69,9 @@ class RemoteClient
 	Pixel* snowHeight[2]; // Pair of intermediate buffers holding quantized snow height grids received from the server
 	int currentBuffer; // Index of the current intermediate grid buffers
 	Threads::TripleBuffer<GridBuffers> grids; // Triple buffer of property grids
-	unsigned int gridVersion; // Version number of currently locked property grids
 	
 	/* Private methods: */
 	void unquantizeGrids(void); // Un-quantizes the current property grids received from the remote AR Sandbox
-	void receiveGridsInter(void); // Receives a set of property grids from the server using inter-frame compression
 	
 	/* Constructors and destructors: */
 	public:
@@ -93,6 +79,10 @@ class RemoteClient
 	~RemoteClient(void); // Destroys the remote client
 	
 	/* Methods: */
+	Comm::TCPPipe& getPipe(void) // Returns a reference to the TCP pipe connected to the AR Sandbox server
+		{
+		return *pipe;
+		}
 	const Size& getGridSize(void) const // Returns the width and height of the cell-centered water level and snow height grids
 		{
 		return gridSize;
@@ -105,27 +95,32 @@ class RemoteClient
 		{
 		return bathymetrySize;
 		}
+	GridBox getBox(void) const; // Returns the valid extents of the cell-centered water level and snow height grids
+	GridBox getBathymetryBox(void) const; // Returns the valid extents of the vertex-centered bathymetry grid
 	const GridScalar* getElevationRange(void) const // Returns the minimum and maximum elevations in the property grids as a two-element array
 		{
 		return elevationRange;
 		}
-	bool lockNewGrids(void); // Locks the most recently received property grids; returns true if the grids have been updated since the last call
-	unsigned int getGridVersion(void) const // Returns a monotonically increasing version number for the currently locked grids
+	void processUpdate(void); // Waits for and processes a grid update message from the AR Sandbox server; typically called from background I/O event handling thread
+	bool lockNewGrids(void) // Locks the most recently received property grids; returns true if the grids have been updated since the last call
 		{
-		return gridVersion;
+		return grids.lockNewValue();
 		}
-	const GridScalar* getBathymetry(void) const // Returns a pointer to the first element of the currently locked bathymetry grid
+	const GridScalar* getBathymetryGrid(void) const // Returns a pointer to the first element of the currently locked bathymetry grid
 		{
 		return grids.getLockedValue().bathymetry;
 		}
-	const GridScalar* getWaterLevel(void) const // Returns a pointer to the first element of the currently locked water level grid
+	GridScalar calcBathymetry(GridScalar x,GridScalar y) const; // Interpolates the currently locked bathymetry grid at the given position
+	const GridScalar* getWaterLevelGrid(void) const // Returns a pointer to the first element of the currently locked water level grid
 		{
 		return grids.getLockedValue().waterLevel;
 		}
-	const GridScalar* getSnowHeight(void) const // Returns a pointer to the first element of the currently locked snow height grid
+	GridScalar calcWaterLevel(GridScalar x,GridScalar y) const; // Interpolates the currently locked water level grid at the given position
+	const GridScalar* getSnowHeightGrid(void) const // Returns a pointer to the first element of the currently locked snow height grid
 		{
 		return grids.getLockedValue().snowHeight;
 		}
+	GridScalar calcSnowHeight(GridScalar x,GridScalar y) const; // Interpolates the currently locked snow height grid at the given position
 	};
 
 #endif

@@ -1,7 +1,7 @@
 /***********************************************************************
 SandboxClient - Vrui application connect to a remote AR Sandbox and
 render its bathymetry and water level.
-Copyright (c) 2019-2025 Oliver Kreylos
+Copyright (c) 2019-2026 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -23,11 +23,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #ifndef SANDBOXCLIENT_INCLUDED
 #define SANDBOXCLIENT_INCLUDED
 
-#include <Threads/Thread.h>
-#include <Threads/TripleBuffer.h>
-#include <Threads/EventDispatcher.h>
+#include <Threads/EventDispatcherThread.h>
 #include <Geometry/Point.h>
 #include <Geometry/Vector.h>
+#include <Geometry/Box.h>
 #include <Geometry/OrthogonalTransformation.h>
 #include <GL/gl.h>
 #include <GL/GLObject.h>
@@ -40,14 +39,10 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <Vrui/GenericToolFactory.h>
 #include <Vrui/SurfaceNavigationTool.h>
 
-#include "Types.h"
-#include "Pixel.h"
+#include "RemoteClient.h"
 #include "Shader.h"
 
 /* Forward declarations: */
-namespace Comm {
-class TCPPipe;
-}
 class GLLightTracker;
 namespace Vrui {
 class Lightsource;
@@ -61,35 +56,7 @@ class SandboxClient:public Vrui::Application,public GLObject,public Vrui::Transp
 	typedef Vrui::Scalar Scalar;
 	typedef Vrui::Point Point;
 	typedef Vrui::Vector Vector;
-	
-	struct GridBuffers // Structure representing a triplet of grids
-		{
-		/* Elements: */
-		public:
-		GLfloat* bathymetry;
-		GLfloat* waterLevel;
-		GLfloat* snowHeight;
-		
-		/* Constructors and destructors: */
-		GridBuffers(void)
-			:bathymetry(0),waterLevel(0),snowHeight(0)
-			{
-			}
-		~GridBuffers(void)
-			{
-			delete[] bathymetry;
-			delete[] waterLevel;
-			delete[] snowHeight;
-			}
-		
-		/* Methods: */
-		void init(const Size& gridSize) // Initializes the grids
-			{
-			bathymetry=new GLfloat[(gridSize[1]-1)*(gridSize[0]-1)];
-			waterLevel=new GLfloat[gridSize[1]*gridSize[0]];
-			snowHeight=new GLfloat[gridSize[1]*gridSize[0]];
-			}
-		};
+	typedef Geometry::Box<Scalar,2> GridBox;
 	
 	class TeleportTool;
 	typedef Vrui::GenericToolFactory<TeleportTool> TeleportToolFactory;
@@ -158,30 +125,22 @@ class SandboxClient:public Vrui::Application,public GLObject,public Vrui::Transp
 		};
 	
 	/* Elements: */
-	Comm::TCPPipe* pipe; // TCP pipe connected to the remote AR Sandbox
-	Size gridSize; // Width and height of the water table's cell-centered quantity grid
-	GLfloat cellSize[2]; // Width and height of each water table cell
-	Size bathymetrySize; // Width and height of the water table's vertex-centered bathymetry grid
-	GLfloat elevationRange[2]; // Minimum and maximum valid elevations
+	RemoteClient* remoteClient; // Client object connected to the remote AR Sandbox server
+	Size gSize; // Size of the remote AR Sandbox's cell-centered property grids
+	Size bSize; // Size of the remote AR Sandbox's bathymetry grid
+	Scalar cellSize[2]; // Cell size of the remote AR Sandbox's property grids
+	GridBox bBox; // Extents of the bathymetry grid
 	ElevationColorMap* elevationColorMap; // The elevation color map
-	Threads::EventDispatcher dispatcher; // Dispatcher for events on the TCP pipe
+	Threads::EventDispatcherThread dispatcher; // Dispatcher for events on the TCP pipe
 	Threads::Thread communicationThread; // Thread to handle communication with the remote AR Sandbox in the background
-	Pixel* bathymetry[2]; // Pair of buffers holding quantized bathymetry grids received from the server
-	Pixel* waterLevel[2]; // Pair of buffers holding quantized water level grids received from the server
-	Pixel* snowHeight[2]; // Pair of buffers holding quantized snow height grids received from the server
-	int currentGrid; // Index of the current grid pair
-	Threads::TripleBuffer<GridBuffers> grids; // Triple buffer of bathymetry and water level grids
-	unsigned int gridVersion; // Version number of currently locked grids
 	Vrui::Lightsource* sun; // Light source representing the sun
+	unsigned int gridVersion; // Version number of most-recently received grids from the remote AR Sandbox
 	bool underwater; // Flag if the main viewer's head is currently under water
 	bool undersnow; // Flag if the main viewer's head is currently under snow
 	
 	/* Private methods: */
-	void unquantizeGrids(void); // Un-quantizes the current bathymetry and water level grids received from the remote AR Sandbox
-	void receiveGridsInter(void); // Receives a set of bathymetry and water level grids from the server using inter-frame compression
 	Scalar intersectLine(const Point& p0,const Point& p1) const; // Returns the intersection parameter of a line segment with the bathymetry; returns 1.0 if there is no intersection
 	static void serverMessageCallback(Threads::EventDispatcher::IOEvent& event); // Callback called when a message arrives from the remote AR Sandbox
-	void* communicationThreadMethod(void); // Method handling communication with the remote AR Sandbox in the background
 	void alignSurfaceFrame(Vrui::SurfaceNavigationTool::AlignmentData& alignmentData); // Aligns the surface frame of a surface navigation tool with the bathymetry surface
 	void compileShaders(DataItem* dataItem,const GLLightTracker& lightTracker) const; // Compiles the bathymetry and water surface shader programs based on current lighting state
 	

@@ -209,6 +209,7 @@ SARndbox: $(EXEDIR)/SARndbox
 SARNDBOXCLIENT_SOURCES = HuffmanBuilder.cpp \
                          IntraFrameDecompressor.cpp \
                          InterFrameDecompressor.cpp \
+                         RemoteClient.cpp \
                          TextureTracker.cpp \
                          Shader.cpp \
                          ElevationColorMap.cpp \

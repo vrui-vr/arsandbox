@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <Misc/SizedTypes.h>
 #include <Misc/StdError.h>
 #include <Comm/TCPPipe.h>
+#include <Math/Math.h>
 
 #include "IntraFrameDecompressor.h"
 #include "InterFrameDecompressor.h"
@@ -33,6 +34,26 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 /******************************************
 Methods of class RemoteClient::GridBuffers:
 ******************************************/
+
+RemoteClient::GridBuffers::GridBuffers(void)
+	:bathymetry(0),waterLevel(0),snowHeight(0)
+	{
+	}
+
+RemoteClient::GridBuffers::~GridBuffers(void)
+	{
+	/* Release all allocated resources: */
+	delete[] bathymetry;
+	delete[] waterLevel;
+	delete[] snowHeight;
+	}
+
+void RemoteClient::GridBuffers::init(const Size& gridSize)
+	{
+	bathymetry=new GridScalar[(gridSize[1]-1)*(gridSize[0]-1)]; // Bathymetry grid is vertex-centered and smaller by one in both directions
+	waterLevel=new GridScalar[gridSize[1]*gridSize[0]]; // Water level grid is cell-centered
+	snowHeight=new GridScalar[gridSize[1]*gridSize[0]]; // Snow height grid is cell-centered
+	}
 
 /*****************************
 Methods of class RemoteClient:
@@ -49,40 +70,24 @@ void RemoteClient::unquantizeGrids(void)
 	
 	/* Un-quantize the bathymetry grid: */
 	GridScalar* bEnd=gb.bathymetry+bathymetrySize.volume();
-	Pixel* qbPtr=bathymetry[currentGrid];
+	Pixel* qbPtr=bathymetry[currentBuffer];
 	for(GridScalar* bPtr=gb.bathymetry;bPtr!=bEnd;++bPtr,++qbPtr)
 		*bPtr=GridScalar(*qbPtr)*eScale+eOffset;
 	
 	/* Un-quantize the water level grid: */
 	GridScalar* wlEnd=gb.waterLevel+gridSize.volume();
-	Pixel* qwlPtr=waterLevel[currentGrid];
+	Pixel* qwlPtr=waterLevel[currentBuffer];
 	for(GridScalar* wlPtr=gb.waterLevel;wlPtr!=wlEnd;++wlPtr,++qwlPtr)
 		*wlPtr=GridScalar(*qwlPtr)*eScale+eOffset;
 	
 	/* Un-quantize the snow height grid: */
 	GridScalar* shEnd=gb.snowHeight+gridSize.volume();
-	Pixel* qshPtr=snowHeight[currentGrid];
+	Pixel* qshPtr=snowHeight[currentBuffer];
 	for(GridScalar* shPtr=gb.snowHeight;shPtr!=shEnd;++shPtr,++qshPtr)
 		*shPtr=GridScalar(*qshPtr)*eScale+eOffset;
 	
 	/* Post the new set of grids: */
 	grids.postNewValue();
-	}
-
-void RemoteClient::receiveGridsInter(void)
-	{
-	/* Create an inter-frame decompressor and connect it to the TCP pipe: */
-	InterFrameDecompressor decompressor(*pipe);
-	
-	/* Receive and decompress the quantized property grids into the intermediate buffers: */
-	int newGrid=1-currentGrid;
-	decompressor.decompressFrame(bathymetrySize[0],bathymetrySize[1],bathymetry[currentGrid],bathymetry[newGrid]);
-	decompressor.decompressFrame(gridSize[0],gridSize[1],waterLevel[currentGrid],waterLevel[newGrid]);
-	decompressor.decompressFrame(gridSize[0],gridSize[1],snowHeight[currentGrid],snowHeight[newGrid]);
-	currentGrid=newGrid;
-	
-	/* Un-quantize the received property grids: */
-	unquantizeGrids();
 	}
 
 RemoteClient::RemoteClient(const char* serverHostName,int serverPort)
@@ -130,7 +135,6 @@ RemoteClient::RemoteClient(const char* serverHostName,int serverPort)
 			waterLevel[i]=new Pixel[gridSize.volume()];
 			snowHeight[i]=new Pixel[gridSize.volume()];
 			}
-		currentGrid=0;
 		
 		/* Initialize the grid buffers: */
 		for(int i=0;i<3;++i)
@@ -138,9 +142,10 @@ RemoteClient::RemoteClient(const char* serverHostName,int serverPort)
 		
 		/* Read the initial set of grids using intra-frame decompression: */
 		IntraFrameDecompressor decompressor(*pipe);
-		decompressor.decompressFrame(bathymetrySize[0],bathymetrySize[1],bathymetry[currentGrid]);
-		decompressor.decompressFrame(gridSize[0],gridSize[1],waterLevel[currentGrid]);
-		decompressor.decompressFrame(gridSize[0],gridSize[1],snowHeight[currentGrid]);
+		currentBuffer=0;
+		decompressor.decompressFrame(bathymetrySize[0],bathymetrySize[1],bathymetry[currentBuffer]);
+		decompressor.decompressFrame(gridSize[0],gridSize[1],waterLevel[currentBuffer]);
+		decompressor.decompressFrame(gridSize[0],gridSize[1],snowHeight[currentBuffer]);
 		unquantizeGrids();
 		}
 	catch(const std::runtime_error& err)
@@ -156,52 +161,6 @@ RemoteClient::RemoteClient(const char* serverHostName,int serverPort)
 			delete[] snowHeight[i];
 			}
 		}
-	
-	
-	try
-		{
-		/* Receive the remote AR Sandbox's water table grid size, cell size, and elevation range: */
-		for(int i=0;i<2;++i)
-			{
-			gridSize[i]=pipe->read<Misc::UInt32>();
-			cellSize[i]=pipe->read<Misc::Float32>();
-			bathymetrySize[i]=gridSize[i]-1;
-			}
-		for(int i=0;i<2;++i)
-			elevationRange[i]=pipe->read<Misc::Float32>();
-		
-		/* Initialize the quantized grid buffers: */
-		for(int i=0;i<2;++i)
-			{
-			bathymetry[i]=new Pixel[bathymetrySize[1]*bathymetrySize[0]];
-			waterLevel[i]=new Pixel[gridSize[1]*gridSize[0]];
-			snowHeight[i]=new Pixel[gridSize[1]*gridSize[0]];
-			}
-		currentGrid=0;
-		
-		/* Initialize the grid buffers: */
-		for(int i=0;i<3;++i)
-			grids.getBuffer(i).init(gridSize);
-		
-		/* Read the initial set of grids using intra-frame decompression: */
-		IntraFrameDecompressor decompressor(*pipe);
-		decompressor.decompressFrame(bathymetrySize[0],bathymetrySize[1],bathymetry[currentGrid]);
-		decompressor.decompressFrame(gridSize[0],gridSize[1],waterLevel[currentGrid]);
-		decompressor.decompressFrame(gridSize[0],gridSize[1],snowHeight[currentGrid]);
-		unquantizeGrids();
-		}
-	catch(const std::runtime_error& err)
-		{
-		/* Disconnect from the remote AR Sandbox: */
-		delete pipe;
-		
-		/* Re-throw the exception: */
-		throw;
-		}
-	
-	/* Start listening on the TCP pipe: */
-	dispatcher.addIOEventListener(pipe->getFd(),Threads::EventDispatcher::Read,serverMessageCallback,this);
-	communicationThread.start(this,&SandboxClient::communicationThreadMethod);
 	}
 
 RemoteClient::~RemoteClient(void)
@@ -213,4 +172,106 @@ RemoteClient::~RemoteClient(void)
 		delete[] waterLevel[i];
 		delete[] snowHeight[i];
 		}
+	}
+
+RemoteClient::GridBox RemoteClient::getBox(void) const
+	{
+	/* The cell-centered grids extend from (0, 0), but can only be evaluated from cell center to cell center: */
+	GridBox result;
+	for(int i=0;i<2;++i)
+		{
+		result.min[i]=GridScalar(0.5)*cellSize[i];
+		result.max[i]=(GridScalar(gridSize[i])-GridScalar(0.5))*cellSize[i];
+		}
+	
+	return result;
+	}
+
+RemoteClient::GridBox RemoteClient::getBathymetryBox(void) const
+	{
+	/* The vertex-centered bathymetry grid extends from (1, 1), and can only be evaluated from vertex to vertex: */
+	GridBox result;
+	for(int i=0;i<2;++i)
+		{
+		result.min[i]=cellSize[i];
+		result.max[i]=GridScalar(bathymetrySize[i])*cellSize[i];
+		}
+	
+	return result;
+	}
+
+void RemoteClient::processUpdate(void)
+	{
+	/* Create an inter-frame decompressor and connect it to the TCP pipe: */
+	InterFrameDecompressor decompressor(*pipe);
+	
+	/* Receive and decompress the quantized property grids into the intermediate buffers: */
+	int newBuffer=1-currentBuffer;
+	decompressor.decompressFrame(bathymetrySize[0],bathymetrySize[1],bathymetry[currentBuffer],bathymetry[newBuffer]);
+	decompressor.decompressFrame(gridSize[0],gridSize[1],waterLevel[currentBuffer],waterLevel[newBuffer]);
+	decompressor.decompressFrame(gridSize[0],gridSize[1],snowHeight[currentBuffer],snowHeight[newBuffer]);
+	currentBuffer=newBuffer;
+	
+	/* Un-quantize the received property grids: */
+	unquantizeGrids();
+	}
+
+RemoteClient::GridScalar RemoteClient::calcBathymetry(RemoteClient::GridScalar x,RemoteClient::GridScalar y) const
+	{
+	/* Convert the given position to bathymetry grid coordinates and clamp against the boundaries of the bathymetry grid: */
+	GridScalar dx=x/cellSize[0]-GridScalar(1);
+	int gx=Math::clamp(int(Math::floor(dx)),int(0),int(bathymetrySize[0])-2);
+	dx=Math::clamp(dx-GridScalar(gx),GridScalar(0),GridScalar(1));
+	GridScalar dy=y/cellSize[1]-GridScalar(1);
+	int gy=Math::clamp(int(Math::floor(dy)),int(0),int(bathymetrySize[1])-2);
+	dy=Math::clamp(dy-GridScalar(gy),GridScalar(0),GridScalar(1));
+	
+	/* Access the grid cell containing the given position in the currently locked bathymetry grid: */
+	const GridScalar* cell=grids.getLockedValue().bathymetry+(gy*bathymetrySize[0]+gx);
+	
+	/* Calculate the bathymetry elevation at the given position via bilinear interpolation: */
+	GridScalar b0=cell[0]*(GridScalar(1)-dx)+cell[1]*dx;
+	cell+=bathymetrySize[0];
+	GridScalar b1=cell[0]*(GridScalar(1)-dx)+cell[1]*dx;
+	return b0*(GridScalar(1)-dy)+b1*dy;
+	}
+
+RemoteClient::GridScalar RemoteClient::calcWaterLevel(RemoteClient::GridScalar x,RemoteClient::GridScalar y) const
+	{
+	/* Convert the given position to cell-centered grid coordinates and clamp against the boundaries of the water level grid: */
+	GridScalar dx=x/cellSize[0]-GridScalar(0.5);
+	int gx=Math::clamp(int(Math::floor(dx)),int(0),int(gridSize[0])-2);
+	dx=Math::clamp(dx-GridScalar(gx),GridScalar(0),GridScalar(1));
+	GridScalar dy=y/cellSize[1]-GridScalar(0.5);
+	int gy=Math::clamp(int(Math::floor(dy)),int(0),int(gridSize[1])-2);
+	dy=Math::clamp(dy-GridScalar(gy),GridScalar(0),GridScalar(1));
+	
+	/* Access the grid cell containing the given position in the currently locked water level grid: */
+	const GridScalar* cell=grids.getLockedValue().waterLevel+(gy*gridSize[0]+gx);
+	
+	/* Calculate the water level at the given position via bilinear interpolation: */
+	GridScalar b0=cell[0]*(GridScalar(1)-dx)+cell[1]*dx;
+	cell+=gridSize[0];
+	GridScalar b1=cell[0]*(GridScalar(1)-dx)+cell[1]*dx;
+	return b0*(GridScalar(1)-dy)+b1*dy;
+	}
+
+RemoteClient::GridScalar RemoteClient::calcSnowHeight(RemoteClient::GridScalar x,RemoteClient::GridScalar y) const
+	{
+	/* Convert the given position to cell-centered grid coordinates and clamp against the boundaries of the snow height grid: */
+	GridScalar dx=x/cellSize[0]-GridScalar(0.5);
+	int gx=Math::clamp(int(Math::floor(dx)),int(0),int(gridSize[0])-2);
+	dx=Math::clamp(dx-GridScalar(gx),GridScalar(0),GridScalar(1));
+	GridScalar dy=y/cellSize[1]-GridScalar(0.5);
+	int gy=Math::clamp(int(Math::floor(dy)),int(0),int(gridSize[1])-2);
+	dy=Math::clamp(dy-GridScalar(gy),GridScalar(0),GridScalar(1));
+	
+	/* Access the grid cell containing the given position in the currently locked snow height grid: */
+	const GridScalar* cell=grids.getLockedValue().snowHeight+(gy*gridSize[0]+gx);
+	
+	/* Calculate the snow height at the given position via bilinear interpolation: */
+	GridScalar b0=cell[0]*(GridScalar(1)-dx)+cell[1]*dx;
+	cell+=gridSize[0];
+	GridScalar b1=cell[0]*(GridScalar(1)-dx)+cell[1]*dx;
+	return b0*(GridScalar(1)-dy)+b1*dy;
 	}

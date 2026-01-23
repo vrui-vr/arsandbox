@@ -1,7 +1,7 @@
 /***********************************************************************
 SandboxClient - Vrui application connect to a remote AR Sandbox and
 render its bathymetry and water level.
-Copyright (c) 2019-2025 Oliver Kreylos
+Copyright (c) 2019-2026 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -25,7 +25,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <string>
 #include <stdexcept>
 #include <iostream>
-#include <Misc/SizedTypes.h>
 #include <Misc/PrintInteger.h>
 #include <Misc/FunctionCalls.h>
 #include <Comm/TCPPipe.h>
@@ -57,8 +56,6 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 
 #include "TextureTracker.h"
 #include "ElevationColorMap.h"
-#include "IntraFrameDecompressor.h"
-#include "InterFrameDecompressor.h"
 
 /****************************************************
 Static eleemnts of class SandboxClient::TeleportTool:
@@ -223,10 +220,14 @@ void SandboxClient::TeleportTool::frame(void)
 		if(cast)
 			{
 			/* Establish boundaries of the castable area: */
-			Scalar xMin=Scalar(0.5)*application->cellSize[0];
-			Scalar xMax=(Scalar(application->bathymetrySize[0])-Scalar(0.5))*application->cellSize[0];
-			Scalar yMin=Scalar(0.5)*application->cellSize[1];
-			Scalar yMax=(Scalar(application->bathymetrySize[1])-Scalar(0.5))*application->cellSize[1];
+			const Size& bSize=application->remoteClient->getBathymetrySize();
+			Scalar cSize[2];
+			for(int i=0;i<2;++i)
+				cSize[i]=Scalar(application->remoteClient->getCellSize()[i]);
+			Scalar xMin=Scalar(0.5)*cSize[0];
+			Scalar xMax=(Scalar(bSize[0])-Scalar(0.5))*cSize[0];
+			Scalar yMin=Scalar(0.5)*cSize[1];
+			Scalar yMax=(Scalar(bSize[1])-Scalar(0.5))*cSize[1];
 			
 			/* Cast an arc from the current input device position: */
 			castArc.clear();
@@ -414,53 +415,17 @@ SandboxClient::DataItem::~DataItem(void)
 Methods of class SandboxClient:
 ******************************/
 
-void SandboxClient::unquantizeGrids(void)
-	{
-	/* Start a new set of grids: */
-	GridBuffers& gb=grids.startNewValue();
-	
-	/* Calculate elevation quantization factors: */
-	GLfloat eScale=(elevationRange[1]-elevationRange[0])/65535.0f;
-	GLfloat eOffset=elevationRange[0];
-	
-	/* Un-quantize the bathymetry grid: */
-	GLfloat* bEnd=gb.bathymetry+(bathymetrySize[1]*bathymetrySize[0]);
-	Pixel* qbPtr=bathymetry[currentGrid];
-	for(GLfloat* bPtr=gb.bathymetry;bPtr!=bEnd;++bPtr,++qbPtr)
-		*bPtr=GLfloat(*qbPtr)*eScale+eOffset;
-	
-	/* Un-quantize the water level grid: */
-	GLfloat* wlEnd=gb.waterLevel+(gridSize[1]*gridSize[0]);
-	Pixel* qwlPtr=waterLevel[currentGrid];
-	for(GLfloat* wlPtr=gb.waterLevel;wlPtr!=wlEnd;++wlPtr,++qwlPtr)
-		*wlPtr=GLfloat(*qwlPtr)*eScale+eOffset;
-	
-	/* Un-quantize the snow height grid: */
-	GLfloat* shEnd=gb.snowHeight+(gridSize[1]*gridSize[0]);
-	Pixel* qshPtr=snowHeight[currentGrid];
-	for(GLfloat* shPtr=gb.snowHeight;shPtr!=shEnd;++shPtr,++qshPtr)
-		*shPtr=GLfloat(*qshPtr)*eScale+eOffset;
-	
-	/* Post the new set of grids: */
-	grids.postNewValue();
-	}
-
-void SandboxClient::receiveGridsInter(void)
-	{
-	int newGrid=1-currentGrid;
-	InterFrameDecompressor decompressor(*pipe);
-	decompressor.decompressFrame(bathymetrySize[0],bathymetrySize[1],bathymetry[currentGrid],bathymetry[newGrid]);
-	decompressor.decompressFrame(gridSize[0],gridSize[1],waterLevel[currentGrid],waterLevel[newGrid]);
-	decompressor.decompressFrame(gridSize[0],gridSize[1],snowHeight[currentGrid],snowHeight[newGrid]);
-	currentGrid=newGrid;
-	unquantizeGrids();
-	}
-
 SandboxClient::Scalar SandboxClient::intersectLine(const SandboxClient::Point& p0,const SandboxClient::Point& p1) const
 	{
+	/* Get the bathymetry grid layout from the remote client: */
+	const Size& bSize=remoteClient->getBathymetrySize();
+	Scalar cSize[2];
+	for(int i=0;i<2;++i)
+		cSize[i]=Scalar(remoteClient->getCellSize()[i]);
+	
 	/* Convert the points to grid coordinates: */
-	Point gp0(p0[0]/Scalar(cellSize[0])-Scalar(0.5),p0[1]/Scalar(cellSize[1])-Scalar(0.5),p0[2]);
-	Point gp1(p1[0]/Scalar(cellSize[0])-Scalar(0.5),p1[1]/Scalar(cellSize[1])-Scalar(0.5),p1[2]);
+	Point gp0(p0[0]/cSize[0]-Scalar(0.5),p0[1]/cSize[1]-Scalar(0.5),p0[2]);
+	Point gp1(p1[0]/cSize[0]-Scalar(0.5),p1[1]/cSize[1]-Scalar(0.5),p1[2]);
 	Vector gd=gp1-gp0;
 	
 	/* Clip the line segment against the grid's boundaries: */
@@ -486,7 +451,7 @@ SandboxClient::Scalar SandboxClient::intersectLine(const SandboxClient::Point& p
 			}
 		
 		/* Clip against the upper boundary: */
-		b=Scalar(bathymetrySize[i]-1);
+		b=Scalar(bSize[i]-1);
 		if(gp0[i]>b)
 			{
 			if(gp1[i]<b)
@@ -509,7 +474,7 @@ SandboxClient::Scalar SandboxClient::intersectLine(const SandboxClient::Point& p
 	Point gp=Geometry::affineCombination(gp0,gp1,l0);
 	unsigned int cp[2];
 	for(int i=0;i<2;++i)
-		cp[i]=Math::clamp(int(Math::floor(gp[i])),int(0),int(bathymetrySize[i])-2);
+		cp[i]=Math::clamp(int(Math::floor(gp[i])),int(0),int(bSize[i])-2);
 	Scalar cl0=l0;
 	while(cl0<l1)
 		{
@@ -531,11 +496,11 @@ SandboxClient::Scalar SandboxClient::intersectLine(const SandboxClient::Point& p
 			}
 		
 		/* Intersect the line segment with the surface inside the current cell: */
-		const GLfloat* cell=grids.getLockedValue().bathymetry+(cp[1]*bathymetrySize[0]+cp[0]);
+		const RemoteClient::GridScalar* cell=remoteClient->getBathymetryGrid()+(cp[1]*bSize[0]+cp[0]);
 		Scalar c0=cell[0];
 		Scalar c1=cell[1];
-		Scalar c2=cell[bathymetrySize[0]];
-		Scalar c3=cell[bathymetrySize[0]+1];
+		Scalar c2=cell[bSize[0]];
+		Scalar c3=cell[bSize[0]+1];
 		Scalar cx0=Scalar(cp[0]);
 		Scalar cx1=Scalar(cp[0]+1);
 		Scalar cy0=Scalar(cp[1]);
@@ -601,27 +566,8 @@ void SandboxClient::serverMessageCallback(Threads::EventDispatcher::IOEvent& eve
 	{
 	SandboxClient* thisPtr=static_cast<SandboxClient*>(event.getUserData());
 	
-	try
-		{
-		/* Read a new set of grids using inter-frame compression: */
-		thisPtr->receiveGridsInter();
-		
-		/* Wake up the main thread: */
-		Vrui::requestUpdate();
-		}
-	catch(const std::runtime_error& err)
-		{
-		}
-	}
-
-void* SandboxClient::communicationThreadMethod(void)
-	{
-	/* Wait for messages from the remote AR Sandbox until interrupted: */
-	while(dispatcher.dispatchNextEvent())
-		{
-		}
-	
-	return 0;
+	/* Let the remote client process the update message: */
+	thisPtr->remoteClient->processUpdate();
 	}
 
 void SandboxClient::alignSurfaceFrame(Vrui::SurfaceNavigationTool::AlignmentData& alignmentData)
@@ -629,19 +575,8 @@ void SandboxClient::alignSurfaceFrame(Vrui::SurfaceNavigationTool::AlignmentData
 	/* Get the frame's base point: */
 	Point base=alignmentData.surfaceFrame.getOrigin();
 	
-	/* Snap the base point to the terrain: */
-	GLfloat* bathymetry=grids.getLockedValue().bathymetry;
-	Scalar dx=base[0]/Scalar(cellSize[0])-Scalar(0.5);
-	int gx=Math::clamp(int(Math::floor(dx)),int(0),int(bathymetrySize[0]-2));
-	dx=Math::clamp(dx-Scalar(gx),Scalar(0),Scalar(1));
-	Scalar dy=base[1]/Scalar(cellSize[1])-Scalar(0.5);
-	int gy=Math::clamp(int(Math::floor(dy)),int(0),int(bathymetrySize[1]-2));
-	dy=Math::clamp(dy-Scalar(gy),Scalar(0),Scalar(1));
-	GLfloat* cell=bathymetry+(gy*(gridSize[0]-1)+gx);
-	Scalar b0=cell[0]*(Scalar(1)-dx)+cell[1]*dx;
-	cell+=gridSize[0]-1;
-	Scalar b1=cell[0]*(Scalar(1)-dx)+cell[1]*dx;
-	base[2]=b0*(Scalar(1)-dy)+b1*dy;
+	/* Snap the base point to the currently locked bathymetry grid: */
+	base[2]=remoteClient->calcBathymetry(base[0],base[1]);
 	
 	/* Align the frame with the bathymetry surface's x and y directions: */
 	alignmentData.surfaceFrame=Vrui::NavTransform(base-Point::origin,Vrui::Rotation::identity,alignmentData.surfaceFrame.getScaling());
@@ -1103,14 +1038,15 @@ void SandboxClient::compileShaders(SandboxClient::DataItem* dataItem,const GLLig
 
 SandboxClient::SandboxClient(int& argc,char**& argv)
 	:Vrui::Application(argc,argv),
-	 pipe(0),
+	 remoteClient(0),
 	 elevationColorMap(0),
+	 sun(0),
 	 gridVersion(0),
-	 sun(0),underwater(false),undersnow(false)
+	 underwater(false),undersnow(false)
 	{
 	/* Parse the command line: */
-	const char* serverName=0;
-	int serverPortId=26000;
+	const char* serverHostName=0;
+	int serverPort=26000;
 	const char* elevationColorMapName=0;
 	for(int argi=1;argi<argc;++argi)
 		{
@@ -1129,13 +1065,23 @@ SandboxClient::SandboxClient(int& argc,char**& argv)
 			else
 				std::cerr<<"SandboxClient: Ignoring command line option "<<argv[argi]<<std::endl;
 			}
-		else if(serverName==0)
-			serverName=argv[argi];
+		else if(serverHostName==0)
+			serverHostName=argv[argi];
 		else
 			std::cerr<<"SandboxClient: Ignoring command line argument "<<argv[argi]<<std::endl;
 		}
-	if(serverName==0)
+	
+	/* Connect to the remote AR Sandbox: */
+	if(serverHostName==0)
 		throw std::runtime_error("SandboxClient: No server name provided");
+	remoteClient=new RemoteClient(serverHostName,serverPort);
+	
+	/* Extract the remote AR Sandbox's cell-centered and bathymetry grid sizes, property grid cell size, and bathymetry extents: */
+	gSize=remoteClient->getGridSize();
+	bSize=remoteClient->getBathymetrySize();
+	for(int i=0;i<2;++i)
+		cellSize[i]=Scalar(remoteClient->getCellSize()[i]);
+	bBox=GridBox(remoteClient->getBathymetryBox());
 	
 	/* Load a requested elevation color map: */
 	if(elevationColorMapName!=0)
@@ -1150,68 +1096,9 @@ SandboxClient::SandboxClient(int& argc,char**& argv)
 			}
 		}
 	
-	/* Connect to the AR Sandbox server: */
-	pipe=new Comm::TCPPipe(serverName,serverPortId);
-	pipe->ref();
-	
-	/* Send an endianness token to the server: */
-	pipe->write<Misc::UInt32>(0x12345678U);
-	pipe->flush();
-	
-	/* Receive an endianness token from the server: */
-	Misc::UInt32 token=pipe->read<Misc::UInt32>();
-	if(token==0x78563412U)
-		pipe->setSwapOnRead(true);
-	else if(token!=0x12345678U)
-		{
-		delete pipe;
-		throw std::runtime_error("SandboxClient: Invalid response from remote AR Sandbox");
-		}
-	
-	try
-		{
-		/* Receive the remote AR Sandbox's water table grid size, cell size, and elevation range: */
-		for(int i=0;i<2;++i)
-			{
-			gridSize[i]=pipe->read<Misc::UInt32>();
-			cellSize[i]=pipe->read<Misc::Float32>();
-			bathymetrySize[i]=gridSize[i]-1;
-			}
-		for(int i=0;i<2;++i)
-			elevationRange[i]=pipe->read<Misc::Float32>();
-		
-		/* Initialize the quantized grid buffers: */
-		for(int i=0;i<2;++i)
-			{
-			bathymetry[i]=new Pixel[bathymetrySize[1]*bathymetrySize[0]];
-			waterLevel[i]=new Pixel[gridSize[1]*gridSize[0]];
-			snowHeight[i]=new Pixel[gridSize[1]*gridSize[0]];
-			}
-		currentGrid=0;
-		
-		/* Initialize the grid buffers: */
-		for(int i=0;i<3;++i)
-			grids.getBuffer(i).init(gridSize);
-		
-		/* Read the initial set of grids using intra-frame decompression: */
-		IntraFrameDecompressor decompressor(*pipe);
-		decompressor.decompressFrame(bathymetrySize[0],bathymetrySize[1],bathymetry[currentGrid]);
-		decompressor.decompressFrame(gridSize[0],gridSize[1],waterLevel[currentGrid]);
-		decompressor.decompressFrame(gridSize[0],gridSize[1],snowHeight[currentGrid]);
-		unquantizeGrids();
-		}
-	catch(const std::runtime_error& err)
-		{
-		/* Disconnect from the remote AR Sandbox: */
-		delete pipe;
-		
-		/* Re-throw the exception: */
-		throw;
-		}
-	
-	/* Start listening on the TCP pipe: */
-	dispatcher.addIOEventListener(pipe->getFd(),Threads::EventDispatcher::Read,serverMessageCallback,this);
-	communicationThread.start(this,&SandboxClient::communicationThreadMethod);
+	/* Start listening on the remote client's TCP pipe: */
+	dispatcher.addIOEventListener(remoteClient->getPipe().getFd(),Threads::EventDispatcher::Read,serverMessageCallback,this);
+	dispatcher.startThread();
 	
 	/* Set the linear unit to scale the AR Sandbox correctly: */
 	Vrui::getCoordinateManager()->setUnit(Geometry::LinearUnit(Geometry::LinearUnit::METER,1.0));
@@ -1234,18 +1121,12 @@ SandboxClient::SandboxClient(int& argc,char**& argv)
 SandboxClient::~SandboxClient(void)
 	{
 	/* Disconnect from the remote AR Sandbox: */
-	dispatcher.stop();
+	dispatcher.stopThread();
 	communicationThread.join();
-	delete pipe;
+	delete remoteClient;
 	
 	/* Release allocated resources: */
 	delete elevationColorMap;
-	for(int i=0;i<2;++i)
-		{
-		delete[] bathymetry[i];
-		delete[] waterLevel[i];
-		delete[] snowHeight[i];
-		}
 	}
 
 void SandboxClient::toolCreationCallback(Vrui::ToolManager::ToolCreationCallbackData* cbData)
@@ -1264,57 +1145,24 @@ void SandboxClient::toolCreationCallback(Vrui::ToolManager::ToolCreationCallback
 
 void SandboxClient::frame(void)
 	{
-	/* Lock the most recent grid buffers: */
-	if(grids.lockNewValue())
+	/* Lock the most recent grid buffers and update the grid version number if there are new grids: */
+	if(remoteClient->lockNewGrids())
 		++gridVersion;
 	
-	/* Calculate the position of the main viewer's head in cell-centered grid space: */
+	/* Retrieve the main viewer's head position in grid coordinates: */
 	Point head=Vrui::getHeadPosition();
-	Scalar dx=head[0]/Scalar(cellSize[0])-Scalar(0.5);
-	int gx(Math::floor(dx));
-	dx-=gx;
-	Scalar dy=head[1]/Scalar(cellSize[1])-Scalar(0.5);
-	int gy(Math::floor(dy));
-	dy-=gy;
+	GridBox::Point head2(head[0],head[1]);
 	
-	/* Check if the head is underwater: */
+	/* Check if the head is underwater and/or under snow: */
 	underwater=false;
-	if(gx>=0&&gx<int(gridSize[0]-1)&&gy>=0&&gy<int(gridSize[1]-1))
-		{
-		GLfloat* cell=grids.getLockedValue().waterLevel+(gy*gridSize[0]+gx);
-		Scalar w0=cell[0]*(Scalar(1)-dx)+cell[1]*dx;
-		cell+=gridSize[0];
-		Scalar w1=cell[0]*(Scalar(1)-dx)+cell[1]*dx;
-		Scalar water=w0*(Scalar(1)-dy)+w1*dy;
-		underwater=head[2]<=water;
-		}
-	
-	/* Check if the head is under snow: */
 	undersnow=false;
-	if(gx>=0&&gx<int(gridSize[0]-1)&&gy>=0&&gy<int(gridSize[1]-1))
+	if(bBox.contains(head2))
 		{
-		GLfloat* cell=grids.getLockedValue().snowHeight+(gy*gridSize[0]+gx);
-		Scalar s0=cell[0]*(Scalar(1)-dx)+cell[1]*dx;
-		cell+=gridSize[0];
-		Scalar s1=cell[0]*(Scalar(1)-dx)+cell[1]*dx;
-		Scalar snow=s0*(Scalar(1)-dy)+s1*dy;
+		/* Compare the head's elevation to the currently locked water level: */
+		underwater=head[2]<=remoteClient->calcWaterLevel(head2[0],head2[1]);
 		
-		/* Sample the bathymetry at the main viewer's head position: */
-		dx=head[0]/Scalar(cellSize[0])-Scalar(1);
-		int gx(Math::floor(dx));
-		dx-=gx;
-		dy=head[1]/Scalar(cellSize[1])-Scalar(1);
-		int gy(Math::floor(dy));
-		dy-=gy;
-		if(gx>=0&&gx<int(bathymetrySize[0]-1)&&gy>=0&&gy<int(bathymetrySize[1]-1))
-			{
-			GLfloat* cell=grids.getLockedValue().bathymetry+(gy*bathymetrySize[0]+gx);
-			Scalar b0=cell[0]*(Scalar(1)-dx)+cell[1]*dx;
-			cell+=bathymetrySize[0];
-			Scalar b1=cell[0]*(Scalar(1)-dx)+cell[1]*dx;
-			Scalar bathy=b0*(Scalar(1)-dy)+b1*dy;
-			undersnow=head[2]<=bathy+snow;
-			}
+		/* Compare the head's elevation to the currently locked bathymetry and snow height: */
+		undersnow=head[2]<=remoteClient->calcBathymetry(head2[0],head2[1])+remoteClient->calcSnowHeight(head2[0],head2[1]);
 		}
 	
 	/* Send the current head position to the remote AR Sandbox: */
@@ -1380,9 +1228,9 @@ void SandboxClient::display(GLContextData& contextData) const
 	if(dataItem->textureVersion!=gridVersion)
 		{
 		/* Upload the new bathymetry grid: */
-		glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB,0,bathymetrySize,GL_RED,GL_FLOAT,grids.getLockedValue().bathymetry);
+		glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB,0,bSize,GL_RED,GL_FLOAT,remoteClient->getBathymetryGrid());
 		}
-	dataItem->bathymetryShader.uploadUniform(cellSize[0],cellSize[1]);
+	dataItem->bathymetryShader.uploadUniform(GLfloat(cellSize[0]),GLfloat(cellSize[1]));
 	dataItem->bathymetryShader.uploadUniform(0.2f,0.5f,0.8f,1.0f);
 	
 	GLfloat waterOpacity(Vrui::getInverseNavigationTransformation().getScaling()*Vrui::Scalar(0.25));
@@ -1407,8 +1255,8 @@ void SandboxClient::display(GLContextData& contextData) const
 	GLVertexArrayParts::enable(Vertex::getPartsMask());
 	glVertexPointer(static_cast<const Vertex*>(0));
 	GLuint* indexPtr=0;
-	for(unsigned int y=1;y<bathymetrySize[1];++y,indexPtr+=bathymetrySize[0]*2)
-		glDrawElements(GL_QUAD_STRIP,bathymetrySize[0]*2,GL_UNSIGNED_INT,indexPtr);
+	for(unsigned int y=1;y<bSize[1];++y,indexPtr+=bSize[0]*2)
+		glDrawElements(GL_QUAD_STRIP,bSize[0]*2,GL_UNSIGNED_INT,indexPtr);
 	GLVertexArrayParts::disable(Vertex::getPartsMask());
 	}
 	
@@ -1424,11 +1272,11 @@ void SandboxClient::display(GLContextData& contextData) const
 	if(dataItem->textureVersion!=gridVersion)
 		{
 		/* Upload the new water surface grid: */
-		glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB,0,gridSize,GL_RED,GL_FLOAT,grids.getLockedValue().waterLevel);
+		glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB,0,gSize,GL_RED,GL_FLOAT,remoteClient->getWaterLevelGrid());
 		}
 	dataItem->opaqueWaterShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->bathymetryTexture));
 	
-	dataItem->opaqueWaterShader.uploadUniform(cellSize[0],cellSize[1]);
+	dataItem->opaqueWaterShader.uploadUniform(GLfloat(cellSize[0]),GLfloat(cellSize[1]));
 	dataItem->opaqueWaterShader.uploadUniform((elevationRange[1]-elevationRange[0])/65535.0f);
 	
 	/* Bind the vertex and index buffers: */
@@ -1441,8 +1289,8 @@ void SandboxClient::display(GLContextData& contextData) const
 	GLVertexArrayParts::enable(Vertex::getPartsMask());
 	glVertexPointer(static_cast<const Vertex*>(0));
 	GLuint* indexPtr=0;
-	for(unsigned int y=1;y<gridSize[1];++y,indexPtr+=gridSize[0]*2)
-		glDrawElements(GL_QUAD_STRIP,gridSize[0]*2,GL_UNSIGNED_INT,indexPtr);
+	for(unsigned int y=1;y<gSize[1];++y,indexPtr+=gSize[0]*2)
+		glDrawElements(GL_QUAD_STRIP,gSize[0]*2,GL_UNSIGNED_INT,indexPtr);
 	GLVertexArrayParts::disable(Vertex::getPartsMask());
 	}
 	glCullFace(GL_BACK);
@@ -1459,11 +1307,11 @@ void SandboxClient::display(GLContextData& contextData) const
 	if(dataItem->textureVersion!=gridVersion)
 		{
 		/* Upload the new snow height grid: */
-		glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB,0,gridSize,GL_RED,GL_FLOAT,grids.getLockedValue().snowHeight);
+		glTexSubImage2D(GL_TEXTURE_RECTANGLE_ARB,0,gSize,GL_RED,GL_FLOAT,remoteClient->getSnowHeightGrid());
 		}
 	dataItem->snowShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->bathymetryTexture));
 	
-	dataItem->snowShader.uploadUniform(cellSize[0],cellSize[1]);
+	dataItem->snowShader.uploadUniform(GLfloat(cellSize[0]),GLfloat(cellSize[1]));
 	dataItem->snowShader.uploadUniform((elevationRange[1]-elevationRange[0])/65535.0f);
 	
 	/* Bind the vertex and index buffers: */
@@ -1475,8 +1323,8 @@ void SandboxClient::display(GLContextData& contextData) const
 	GLVertexArrayParts::enable(Vertex::getPartsMask());
 	glVertexPointer(static_cast<const Vertex*>(0));
 	GLuint* indexPtr=0;
-	for(unsigned int y=1;y<gridSize[1];++y,indexPtr+=gridSize[0]*2)
-		glDrawElements(GL_QUAD_STRIP,gridSize[0]*2,GL_UNSIGNED_INT,indexPtr);
+	for(unsigned int y=1;y<gSize[1];++y,indexPtr+=gSize[0]*2)
+		glDrawElements(GL_QUAD_STRIP,gSize[0]*2,GL_UNSIGNED_INT,indexPtr);
 	GLVertexArrayParts::disable(Vertex::getPartsMask());
 	}
 	
@@ -1507,23 +1355,15 @@ void SandboxClient::resetNavigation(void)
 	nav*=Vrui::NavTransform::rotate(Vrui::Rotation::fromBaseVectors(x,y));
 	
 	/* Lock the most recent grid buffers: */
-	if(grids.lockNewValue())
+	if(remoteClient->lockNewGrids())
 		++gridVersion;
-	const GLfloat* b=grids.getLockedValue().bathymetry;
 	
 	/* Evaluate the bathymetry grid at the grid center: */
-	int gx0=(bathymetrySize[0]-1)/2;
-	int gx1=bathymetrySize[0]%2!=0?gx0:gx0+1;
-	int gy0=(bathymetrySize[1]-1)/2;
-	int gy1=bathymetrySize[1]%2!=0?gy0:gy0+1;
-	Scalar z0(Math::mid(b[gy0*bathymetrySize[0]+gx0],b[gy0*bathymetrySize[0]+gx1]));
-	Scalar z1(Math::mid(b[gy1*bathymetrySize[0]+gx0],b[gy1*bathymetrySize[0]+gx1]));
-	Scalar zMid=Math::mid(z0,z1);
+	GridBox::Point mid=Geometry::mid(bBox.min,bBox.max);
+	Scalar midZ=remoteClient->calcBathymetry(mid[0],mid[1]);
 	
 	/* Center on a point some distance above the center of the grid: */
-	Scalar xMid=Math::div2(Scalar(bathymetrySize[0])*cellSize[0]);
-	Scalar yMid=Math::div2(Scalar(bathymetrySize[1])*cellSize[1]);
-	nav*=Vrui::NavTransform::translateToOriginFrom(Vrui::Point(xMid,yMid,zMid+Scalar(2)));
+	nav*=Vrui::NavTransform::translateToOriginFrom(Vrui::Point(mid[0],mid[1],midZ+Scalar(2)));
 	
 	Vrui::setNavigationTransformation(nav);
 	}
@@ -1540,7 +1380,7 @@ void SandboxClient::initContext(GLContextData& contextData) const
 	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB,GL_TEXTURE_WRAP_S,GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB,GL_TEXTURE_WRAP_T,GL_CLAMP);
-	glTexImage2D(GL_TEXTURE_RECTANGLE_ARB,0,GL_R32F,bathymetrySize,0,GL_RED,GL_FLOAT,0);
+	glTexImage2D(GL_TEXTURE_RECTANGLE_ARB,0,GL_R32F,bSize,0,GL_RED,GL_FLOAT,0);
 	glBindTexture(GL_TEXTURE_RECTANGLE_ARB,0);
 	
 	/* Create the water surface elevation texture: */
@@ -1549,7 +1389,7 @@ void SandboxClient::initContext(GLContextData& contextData) const
 	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB,GL_TEXTURE_WRAP_S,GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB,GL_TEXTURE_WRAP_T,GL_CLAMP);
-	glTexImage2D(GL_TEXTURE_RECTANGLE_ARB,0,GL_R32F,gridSize,0,GL_RED,GL_FLOAT,0);
+	glTexImage2D(GL_TEXTURE_RECTANGLE_ARB,0,GL_R32F,gSize,0,GL_RED,GL_FLOAT,0);
 	glBindTexture(GL_TEXTURE_RECTANGLE_ARB,0);
 	
 	/* Create the snow height texture: */
@@ -1558,7 +1398,7 @@ void SandboxClient::initContext(GLContextData& contextData) const
 	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB,GL_TEXTURE_WRAP_S,GL_CLAMP);
 	glTexParameteri(GL_TEXTURE_RECTANGLE_ARB,GL_TEXTURE_WRAP_T,GL_CLAMP);
-	glTexImage2D(GL_TEXTURE_RECTANGLE_ARB,0,GL_R32F,gridSize,0,GL_RED,GL_FLOAT,0);
+	glTexImage2D(GL_TEXTURE_RECTANGLE_ARB,0,GL_R32F,gSize,0,GL_RED,GL_FLOAT,0);
 	glBindTexture(GL_TEXTURE_RECTANGLE_ARB,0);
 	
 	/* Create the depth texture: */
@@ -1573,27 +1413,27 @@ void SandboxClient::initContext(GLContextData& contextData) const
 	/* Upload the grid of bathymetry template vertices into the vertex buffer: */
 	{
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB,dataItem->bathymetryVertexBuffer);
-	glBufferDataARB(GL_ARRAY_BUFFER_ARB,bathymetrySize[1]*bathymetrySize[0]*sizeof(Vertex),0,GL_STATIC_DRAW_ARB);
+	glBufferDataARB(GL_ARRAY_BUFFER_ARB,bSize.volume()*sizeof(Vertex),0,GL_STATIC_DRAW_ARB);
 	Vertex* vPtr=static_cast<Vertex*>(glMapBufferARB(GL_ARRAY_BUFFER_ARB,GL_WRITE_ONLY_ARB));
-	for(unsigned int y=0;y<bathymetrySize[1];++y)
-		for(unsigned int x=0;x<bathymetrySize[0];++x,++vPtr)
+	for(unsigned int y=0;y<bSize[1];++y)
+		for(unsigned int x=0;x<bSize[0];++x,++vPtr)
 			{
-			/* Set the template vertex' position to the pixel center's position: */
-			vPtr->position[0]=GLfloat(x)+0.5f;
-			vPtr->position[1]=GLfloat(y)+0.5f;
+			/* Set the template vertex' position to the cell corner's position: */
+			vPtr->position[0]=GLfloat(x)+1.0f;
+			vPtr->position[1]=GLfloat(y)+1.0f;
 			}
 	glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB,0);
 	
 	/* Upload the bathymetry's triangle indices into the index buffer: */
 	glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB,dataItem->bathymetryIndexBuffer);
-	glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB,(bathymetrySize[1]-1)*bathymetrySize[0]*2*sizeof(GLuint),0,GL_STATIC_DRAW_ARB);
+	glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB,(bSize[1]-1)*bSize[0]*2*sizeof(GLuint),0,GL_STATIC_DRAW_ARB);
 	GLuint* iPtr=static_cast<GLuint*>(glMapBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB,GL_WRITE_ONLY_ARB));
-	for(unsigned int y=1;y<bathymetrySize[1];++y)
-		for(unsigned int x=0;x<bathymetrySize[0];++x,iPtr+=2)
+	for(unsigned int y=1;y<bSize[1];++y)
+		for(unsigned int x=0;x<bSize[0];++x,iPtr+=2)
 			{
-			iPtr[0]=GLuint(y*bathymetrySize[0]+x);
-			iPtr[1]=GLuint((y-1)*bathymetrySize[0]+x);
+			iPtr[0]=GLuint(y*bSize[0]+x);
+			iPtr[1]=GLuint((y-1)*bSize[0]+x);
 			}
 	glUnmapBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB);
 	glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
@@ -1602,12 +1442,12 @@ void SandboxClient::initContext(GLContextData& contextData) const
 	/* Upload the grid of water surface template vertices into the vertex buffer: */
 	{
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB,dataItem->waterVertexBuffer);
-	glBufferDataARB(GL_ARRAY_BUFFER_ARB,gridSize[1]*gridSize[0]*sizeof(Vertex),0,GL_STATIC_DRAW_ARB);
+	glBufferDataARB(GL_ARRAY_BUFFER_ARB,gSize.volume()*sizeof(Vertex),0,GL_STATIC_DRAW_ARB);
 	Vertex* vPtr=static_cast<Vertex*>(glMapBufferARB(GL_ARRAY_BUFFER_ARB,GL_WRITE_ONLY_ARB));
-	for(unsigned int y=0;y<gridSize[1];++y)
-		for(unsigned int x=0;x<gridSize[0];++x,++vPtr)
+	for(unsigned int y=0;y<gSize[1];++y)
+		for(unsigned int x=0;x<gSize[0];++x,++vPtr)
 			{
-			/* Set the template vertex' position to the pixel center's position: */
+			/* Set the template vertex' position to the cell center's position: */
 			vPtr->position[0]=GLfloat(x)+0.5f;
 			vPtr->position[1]=GLfloat(y)+0.5f;
 			}
@@ -1616,13 +1456,13 @@ void SandboxClient::initContext(GLContextData& contextData) const
 	
 	/* Upload the water surface's triangle indices into the index buffer: */
 	glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB,dataItem->waterIndexBuffer);
-	glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB,(gridSize[1]-1)*gridSize[0]*2*sizeof(GLuint),0,GL_STATIC_DRAW_ARB);
+	glBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB,(gSize[1]-1)*gSize[0]*2*sizeof(GLuint),0,GL_STATIC_DRAW_ARB);
 	GLuint* iPtr=static_cast<GLuint*>(glMapBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB,GL_WRITE_ONLY_ARB));
-	for(unsigned int y=1;y<gridSize[1];++y)
-		for(unsigned int x=0;x<gridSize[0];++x,iPtr+=2)
+	for(unsigned int y=1;y<gSize[1];++y)
+		for(unsigned int x=0;x<gSize[0];++x,iPtr+=2)
 			{
-			iPtr[0]=GLuint(y*gridSize[0]+x);
-			iPtr[1]=GLuint((y-1)*gridSize[0]+x);
+			iPtr[0]=GLuint(y*gSize[0]+x);
+			iPtr[1]=GLuint((y-1)*gSize[0]+x);
 			}
 	glUnmapBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB);
 	glBindBufferARB(GL_ELEMENT_ARRAY_BUFFER_ARB,0);
@@ -1659,7 +1499,7 @@ void SandboxClient::glRenderActionTransparent(GLContextData& contextData) const
 	dataItem->transparentWaterShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->waterTexture));
 	dataItem->transparentWaterShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->bathymetryTexture));
 	
-	dataItem->transparentWaterShader.uploadUniform(cellSize[0],cellSize[1]);
+	dataItem->transparentWaterShader.uploadUniform(GLfloat(cellSize[0]),GLfloat(cellSize[1]));
 	
 	/* Check if the depth texture needs to be resized: */
 	dataItem->transparentWaterShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->depthTexture));
@@ -1708,8 +1548,8 @@ void SandboxClient::glRenderActionTransparent(GLContextData& contextData) const
 	GLVertexArrayParts::enable(Vertex::getPartsMask());
 	glVertexPointer(static_cast<const Vertex*>(0));
 	GLuint* indexPtr=0;
-	for(unsigned int y=1;y<gridSize[1];++y,indexPtr+=gridSize[0]*2)
-		glDrawElements(GL_QUAD_STRIP,gridSize[0]*2,GL_UNSIGNED_INT,indexPtr);
+	for(unsigned int y=1;y<gSize[1];++y,indexPtr+=gSize[0]*2)
+		glDrawElements(GL_QUAD_STRIP,gSize[0]*2,GL_UNSIGNED_INT,indexPtr);
 	GLVertexArrayParts::disable(Vertex::getPartsMask());
 	}
 	glDisable(GL_DEPTH_CLAMP);
@@ -1724,7 +1564,7 @@ void SandboxClient::glRenderActionTransparent(GLContextData& contextData) const
 	dataItem->opaqueWaterShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->waterTexture));
 	dataItem->opaqueWaterShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->bathymetryTexture));
 	
-	dataItem->opaqueWaterShader.uploadUniform(cellSize[0],cellSize[1]);
+	dataItem->opaqueWaterShader.uploadUniform(GLfloat(cellSize[0]),GLfloat(cellSize[1]));
 	dataItem->opaqueWaterShader.uploadUniform((elevationRange[1]-elevationRange[0])/65535.0f);
 	
 	/* Draw the water surface: */
@@ -1733,8 +1573,8 @@ void SandboxClient::glRenderActionTransparent(GLContextData& contextData) const
 	GLVertexArrayParts::enable(Vertex::getPartsMask());
 	glVertexPointer(static_cast<const Vertex*>(0));
 	GLuint* indexPtr=0;
-	for(unsigned int y=1;y<gridSize[1];++y,indexPtr+=gridSize[0]*2)
-		glDrawElements(GL_QUAD_STRIP,gridSize[0]*2,GL_UNSIGNED_INT,indexPtr);
+	for(unsigned int y=1;y<gSize[1];++y,indexPtr+=gSize[0]*2)
+		glDrawElements(GL_QUAD_STRIP,gSize[0]*2,GL_UNSIGNED_INT,indexPtr);
 	GLVertexArrayParts::disable(Vertex::getPartsMask());
 	}
 	glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
