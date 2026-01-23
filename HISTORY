@@ -195,3 +195,5 @@ SARndbox-5.0:
 - Added snowpack simulation.
 
 SARndbox-5.1:
+- Encapsulated remote AR Sandbox client communication code in
+  RemoteClient class.
