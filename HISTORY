@@ -197,3 +197,6 @@ SARndbox-5.0:
 SARndbox-5.1:
 - Encapsulated remote AR Sandbox client communication code in
   RemoteClient class.
+
+SARndbox-5.2:
+- Bumped Vrui version requirement to Vrui-14.0-001.
