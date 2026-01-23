@@ -129,7 +129,8 @@ class SandboxClient:public Vrui::Application,public GLObject,public Vrui::Transp
 	Size gSize; // Size of the remote AR Sandbox's cell-centered property grids
 	Size bSize; // Size of the remote AR Sandbox's bathymetry grid
 	Scalar cellSize[2]; // Cell size of the remote AR Sandbox's property grids
-	GridBox bBox; // Extents of the bathymetry grid
+	GridBox bDomain; // Domain of the bathymetry grid
+	GLfloat quantFactor; // Un-quantization factor for the remote AR Sandbox's property grids
 	ElevationColorMap* elevationColorMap; // The elevation color map
 	Threads::EventDispatcherThread dispatcher; // Dispatcher for events on the TCP pipe
 	Threads::Thread communicationThread; // Thread to handle communication with the remote AR Sandbox in the background

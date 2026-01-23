@@ -160,6 +160,9 @@ RemoteClient::RemoteClient(const char* serverHostName,int serverPort)
 			delete[] waterLevel[i];
 			delete[] snowHeight[i];
 			}
+		
+		/* Re-throw the exception: */
+		throw;
 		}
 	}
 
@@ -174,7 +177,7 @@ RemoteClient::~RemoteClient(void)
 		}
 	}
 
-RemoteClient::GridBox RemoteClient::getBox(void) const
+RemoteClient::GridBox RemoteClient::getDomain(void) const
 	{
 	/* The cell-centered grids extend from (0, 0), but can only be evaluated from cell center to cell center: */
 	GridBox result;
@@ -187,7 +190,7 @@ RemoteClient::GridBox RemoteClient::getBox(void) const
 	return result;
 	}
 
-RemoteClient::GridBox RemoteClient::getBathymetryBox(void) const
+RemoteClient::GridBox RemoteClient::getBathymetryDomain(void) const
 	{
 	/* The vertex-centered bathymetry grid extends from (1, 1), and can only be evaluated from vertex to vertex: */
 	GridBox result;
@@ -274,4 +277,19 @@ RemoteClient::GridScalar RemoteClient::calcSnowHeight(RemoteClient::GridScalar x
 	cell+=gridSize[0];
 	GridScalar b1=cell[0]*(GridScalar(1)-dx)+cell[1]*dx;
 	return b0*(GridScalar(1)-dy)+b1*dy;
+	}
+
+void RemoteClient::sendViewer(const RemoteClient::Point3& headPos,const RemoteClient::Vector3& viewDir)
+	{
+	/* Write the message identifier: */
+	pipe->write<Misc::UInt16>(0);
+	
+	/* Write the head position and view direction: */
+	Geometry::Point<Misc::Float32,3> fhead(headPos);
+	pipe->write(fhead.getComponents(),3);
+	Geometry::Vector<Misc::Float32,3> fview(viewDir);
+	pipe->write(fview.getComponents(),3);
+	
+	/* Send the message: */
+	pipe->flush();
 	}

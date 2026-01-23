@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #define REMOTECLIENT_INCLUDED
 
 #include <Threads/TripleBuffer.h>
+#include <Geometry/Point.h>
+#include <Geometry/Vector.h>
 #include <Geometry/Box.h>
 
 #include "Types.h"
@@ -40,6 +42,8 @@ class RemoteClient
 	public:
 	typedef float GridScalar; // Type for values stored in property grids
 	typedef Geometry::Box<GridScalar,2> GridBox; // Type for 2D grid extents
+	typedef Geometry::Point<GridScalar,3> Point3; // Type for 3D points
+	typedef Geometry::Vector<GridScalar,3> Vector3; // Type for 3D vectors
 	
 	private:
 	struct GridBuffers // Structure representing a triplet of property grids
@@ -95,8 +99,8 @@ class RemoteClient
 		{
 		return bathymetrySize;
 		}
-	GridBox getBox(void) const; // Returns the valid extents of the cell-centered water level and snow height grids
-	GridBox getBathymetryBox(void) const; // Returns the valid extents of the vertex-centered bathymetry grid
+	GridBox getDomain(void) const; // Returns the valid extents of the cell-centered water level and snow height grids
+	GridBox getBathymetryDomain(void) const; // Returns the valid extents of the vertex-centered bathymetry grid
 	const GridScalar* getElevationRange(void) const // Returns the minimum and maximum elevations in the property grids as a two-element array
 		{
 		return elevationRange;
@@ -121,6 +125,7 @@ class RemoteClient
 		return grids.getLockedValue().snowHeight;
 		}
 	GridScalar calcSnowHeight(GridScalar x,GridScalar y) const; // Interpolates the currently locked snow height grid at the given position
+	void sendViewer(const Point3& headPos,const Vector3& viewDir); // Sends the given head position and viewing direction in grid coordinates to the remote server
 	};
 
 #endif

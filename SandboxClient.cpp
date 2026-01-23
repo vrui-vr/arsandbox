@@ -220,14 +220,10 @@ void SandboxClient::TeleportTool::frame(void)
 		if(cast)
 			{
 			/* Establish boundaries of the castable area: */
-			const Size& bSize=application->remoteClient->getBathymetrySize();
-			Scalar cSize[2];
-			for(int i=0;i<2;++i)
-				cSize[i]=Scalar(application->remoteClient->getCellSize()[i]);
-			Scalar xMin=Scalar(0.5)*cSize[0];
-			Scalar xMax=(Scalar(bSize[0])-Scalar(0.5))*cSize[0];
-			Scalar yMin=Scalar(0.5)*cSize[1];
-			Scalar yMax=(Scalar(bSize[1])-Scalar(0.5))*cSize[1];
+			Scalar xMin=application->bDomain.min[0];
+			Scalar xMax=application->bDomain.max[0];
+			Scalar yMin=application->bDomain.min[1];
+			Scalar yMax=application->bDomain.max[1];
 			
 			/* Cast an arc from the current input device position: */
 			castArc.clear();
@@ -304,8 +300,8 @@ void SandboxClient::TeleportTool::frame(void)
 							}
 						else
 							{
-							// cv-=normal*(Scalar(2)*(cv*normal));
-							cv-=normal*(cv*normal);
+							// cv-=normal*(Scalar(2)*(cv*normal)); // Fully elastic reflection
+							cv-=normal*(cv*normal); // Fully inelastic reflection
 							}
 						}
 					
@@ -417,15 +413,9 @@ Methods of class SandboxClient:
 
 SandboxClient::Scalar SandboxClient::intersectLine(const SandboxClient::Point& p0,const SandboxClient::Point& p1) const
 	{
-	/* Get the bathymetry grid layout from the remote client: */
-	const Size& bSize=remoteClient->getBathymetrySize();
-	Scalar cSize[2];
-	for(int i=0;i<2;++i)
-		cSize[i]=Scalar(remoteClient->getCellSize()[i]);
-	
 	/* Convert the points to grid coordinates: */
-	Point gp0(p0[0]/cSize[0]-Scalar(0.5),p0[1]/cSize[1]-Scalar(0.5),p0[2]);
-	Point gp1(p1[0]/cSize[0]-Scalar(0.5),p1[1]/cSize[1]-Scalar(0.5),p1[2]);
+	Point gp0(p0[0]/cellSize[0]-Scalar(1),p0[1]/cellSize[1]-Scalar(1),p0[2]);
+	Point gp1(p1[0]/cellSize[0]-Scalar(1),p1[1]/cellSize[1]-Scalar(1),p1[2]);
 	Vector gd=gp1-gp0;
 	
 	/* Clip the line segment against the grid's boundaries: */
@@ -568,6 +558,9 @@ void SandboxClient::serverMessageCallback(Threads::EventDispatcher::IOEvent& eve
 	
 	/* Let the remote client process the update message: */
 	thisPtr->remoteClient->processUpdate();
+	
+	/* Request a new frame: */
+	Vrui::requestUpdate();
 	}
 
 void SandboxClient::alignSurfaceFrame(Vrui::SurfaceNavigationTool::AlignmentData& alignmentData)
@@ -1073,15 +1066,23 @@ SandboxClient::SandboxClient(int& argc,char**& argv)
 	
 	/* Connect to the remote AR Sandbox: */
 	if(serverHostName==0)
-		throw std::runtime_error("SandboxClient: No server name provided");
-	remoteClient=new RemoteClient(serverHostName,serverPort);
+		throw Misc::makeStdErr(__PRETTY_FUNCTION__,"No server name provided");
+	try
+		{
+		remoteClient=new RemoteClient(serverHostName,serverPort);
+		}
+	catch(const std::runtime_error& err)
+		{
+		throw Misc::makeStdErr(__PRETTY_FUNCTION__,"Unable to connect to remote AR Sandbox on %s:%d due to exception %s",serverHostName,serverPort,err.what());
+		}
 	
 	/* Extract the remote AR Sandbox's cell-centered and bathymetry grid sizes, property grid cell size, and bathymetry extents: */
 	gSize=remoteClient->getGridSize();
 	bSize=remoteClient->getBathymetrySize();
 	for(int i=0;i<2;++i)
 		cellSize[i]=Scalar(remoteClient->getCellSize()[i]);
-	bBox=GridBox(remoteClient->getBathymetryBox());
+	bDomain=GridBox(remoteClient->getBathymetryDomain());
+	quantFactor=GLfloat(remoteClient->getElevationRange()[1]-remoteClient->getElevationRange()[0])/65535.0f;
 	
 	/* Load a requested elevation color map: */
 	if(elevationColorMapName!=0)
@@ -1111,8 +1112,8 @@ SandboxClient::SandboxClient(int& argc,char**& argv)
 		Vrui::getViewer(i)->setHeadlightState(false);
 	
 	/* Adjust the backplane distance: */
-	Vrui::Scalar newBackplaneDist(Math::sqrt(Math::sqr(Scalar(bathymetrySize[0]-1)*cellSize[0])+Math::sqr(Scalar(bathymetrySize[1]-1)*cellSize[1]))*Scalar(1.25));
-	Vrui::setBackplaneDist(Math::max(newBackplaneDist,Vrui::getBackplaneDist()));
+	Scalar minBackplaneDist=Geometry::dist(bDomain.min,bDomain.max)*Scalar(1.25);
+	Vrui::setBackplaneDist(Math::max(minBackplaneDist,Vrui::getBackplaneDist()));
 	
 	/* Create tool classes: */
 	TeleportTool::initClass();
@@ -1156,7 +1157,7 @@ void SandboxClient::frame(void)
 	/* Check if the head is underwater and/or under snow: */
 	underwater=false;
 	undersnow=false;
-	if(bBox.contains(head2))
+	if(bDomain.contains(head2))
 		{
 		/* Compare the head's elevation to the currently locked water level: */
 		underwater=head[2]<=remoteClient->calcWaterLevel(head2[0],head2[1]);
@@ -1165,13 +1166,8 @@ void SandboxClient::frame(void)
 		undersnow=head[2]<=remoteClient->calcBathymetry(head2[0],head2[1])+remoteClient->calcSnowHeight(head2[0],head2[1]);
 		}
 	
-	/* Send the current head position to the remote AR Sandbox: */
-	Geometry::Point<Misc::Float32,3> fhead(head);
-	pipe->write<Misc::UInt16>(0);
-	pipe->write(fhead.getComponents(),3);
-	Geometry::Vector<Misc::Float32,3> fview(Vrui::getViewDirection());
-	pipe->write(fview.getComponents(),3);
-	pipe->flush();
+	/* Send the current head position and view direction to the remote AR Sandbox: */
+	remoteClient->sendViewer(head,Vrui::getViewDirection());
 	}
 
 void SandboxClient::display(GLContextData& contextData) const
@@ -1233,7 +1229,7 @@ void SandboxClient::display(GLContextData& contextData) const
 	dataItem->bathymetryShader.uploadUniform(GLfloat(cellSize[0]),GLfloat(cellSize[1]));
 	dataItem->bathymetryShader.uploadUniform(0.2f,0.5f,0.8f,1.0f);
 	
-	GLfloat waterOpacity(Vrui::getInverseNavigationTransformation().getScaling()*Vrui::Scalar(0.25));
+	GLfloat waterOpacity(Vrui::getInverseNavigationTransformation().getScaling()*Scalar(0.25));
 	dataItem->bathymetryShader.uploadUniform(underwater?waterOpacity:0.0f);
 	
 	if(elevationColorMap!=0)
@@ -1277,7 +1273,7 @@ void SandboxClient::display(GLContextData& contextData) const
 	dataItem->opaqueWaterShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->bathymetryTexture));
 	
 	dataItem->opaqueWaterShader.uploadUniform(GLfloat(cellSize[0]),GLfloat(cellSize[1]));
-	dataItem->opaqueWaterShader.uploadUniform((elevationRange[1]-elevationRange[0])/65535.0f);
+	dataItem->opaqueWaterShader.uploadUniform(quantFactor);
 	
 	/* Bind the vertex and index buffers: */
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB,dataItem->waterVertexBuffer);
@@ -1312,7 +1308,7 @@ void SandboxClient::display(GLContextData& contextData) const
 	dataItem->snowShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->bathymetryTexture));
 	
 	dataItem->snowShader.uploadUniform(GLfloat(cellSize[0]),GLfloat(cellSize[1]));
-	dataItem->snowShader.uploadUniform((elevationRange[1]-elevationRange[0])/65535.0f);
+	dataItem->snowShader.uploadUniform(quantFactor);
 	
 	/* Bind the vertex and index buffers: */
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB,dataItem->waterVertexBuffer);
@@ -1359,7 +1355,7 @@ void SandboxClient::resetNavigation(void)
 		++gridVersion;
 	
 	/* Evaluate the bathymetry grid at the grid center: */
-	GridBox::Point mid=Geometry::mid(bBox.min,bBox.max);
+	GridBox::Point mid=Geometry::mid(bDomain.min,bDomain.max);
 	Scalar midZ=remoteClient->calcBathymetry(mid[0],mid[1]);
 	
 	/* Center on a point some distance above the center of the grid: */
@@ -1518,12 +1514,12 @@ void SandboxClient::glRenderActionTransparent(GLContextData& contextData) const
 	
 	/* Start with the transformation from clip coordinates to device coordinates: */
 	Vrui::PTransform::Matrix& depthMatrix=depthTransform.getMatrix();
-	depthMatrix(0,0)=Vrui::Scalar(0.5)*Vrui::Scalar(ds.viewport.size[0]);
-	depthMatrix(0,3)=Vrui::Scalar(ds.viewport.offset[0])+depthMatrix(0,0);
-	depthMatrix(1,1)=Vrui::Scalar(0.5)*Vrui::Scalar(ds.viewport.size[1]);
-	depthMatrix(1,3)=Vrui::Scalar(ds.viewport.offset[1])+depthMatrix(1,1);
-	depthMatrix(2,2)=Vrui::Scalar(0.5);
-	depthMatrix(2,3)=Vrui::Scalar(0.5);
+	depthMatrix(0,0)=Scalar(0.5)*Scalar(ds.viewport.size[0]);
+	depthMatrix(0,3)=Scalar(ds.viewport.offset[0])+depthMatrix(0,0);
+	depthMatrix(1,1)=Scalar(0.5)*Scalar(ds.viewport.size[1]);
+	depthMatrix(1,3)=Scalar(ds.viewport.offset[1])+depthMatrix(1,1);
+	depthMatrix(2,2)=Scalar(0.5);
+	depthMatrix(2,3)=Scalar(0.5);
 	
 	/* Concatenate the projection matrix: */
 	depthTransform*=ds.projection;
@@ -1536,7 +1532,7 @@ void SandboxClient::glRenderActionTransparent(GLContextData& contextData) const
 	dataItem->transparentWaterShader.uploadUniform(depthTransform);
 	
 	dataItem->transparentWaterShader.uploadUniform(0.25f);
-	dataItem->transparentWaterShader.uploadUniform((elevationRange[1]-elevationRange[0])/65535.0f);
+	dataItem->transparentWaterShader.uploadUniform(quantFactor);
 	
 	/* Bind the vertex and index buffers: */
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB,dataItem->waterVertexBuffer);
@@ -1565,7 +1561,7 @@ void SandboxClient::glRenderActionTransparent(GLContextData& contextData) const
 	dataItem->opaqueWaterShader.uploadUniform(textureTracker.bindTexture(GL_TEXTURE_RECTANGLE_ARB,dataItem->bathymetryTexture));
 	
 	dataItem->opaqueWaterShader.uploadUniform(GLfloat(cellSize[0]),GLfloat(cellSize[1]));
-	dataItem->opaqueWaterShader.uploadUniform((elevationRange[1]-elevationRange[0])/65535.0f);
+	dataItem->opaqueWaterShader.uploadUniform(quantFactor);
 	
 	/* Draw the water surface: */
 	glBlendFunc(GL_ONE,GL_ONE);
