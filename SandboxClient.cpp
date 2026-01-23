@@ -27,6 +27,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <iostream>
 #include <Misc/PrintInteger.h>
 #include <Misc/FunctionCalls.h>
+#include <Misc/MessageLogger.h>
 #include <Comm/TCPPipe.h>
 #include <Math/Math.h>
 #include <Geometry/LinearUnit.h>
@@ -556,8 +557,18 @@ void SandboxClient::serverMessageCallback(Threads::EventDispatcher::IOEvent& eve
 	{
 	SandboxClient* thisPtr=static_cast<SandboxClient*>(event.getUserData());
 	
-	/* Let the remote client process the update message: */
-	thisPtr->remoteClient->processUpdate();
+	try
+		{
+		/* Let the remote client process the update message: */
+		thisPtr->remoteClient->processUpdate();
+		}
+	catch(const std::runtime_error&)
+		{
+		/* Show an error message and disconnect from the remote AR Sandbox: */
+		Misc::sourcedUserError(__PRETTY_FUNCTION__,"Disconnected from remote AR Sandbox");
+		event.removeListener();
+		thisPtr->connected=false;
+		}
 	
 	/* Request a new frame: */
 	Vrui::requestUpdate();
@@ -613,8 +624,8 @@ void SandboxClient::compileShaders(SandboxClient::DataItem* dataItem,const GLLig
 		normalGc.z=2.0*bathymetryCellSize.x*bathymetryCellSize.y;\n\
 		\n\
 		/* Transform the vertex and its normal vector from grid space to eye space for illumination: */\n\
-		vertexGc.x*=bathymetryCellSize.x;\n\
-		vertexGc.y*=bathymetryCellSize.y;\n\
+		vertexGc.x=(vertexGc.x+0.5)*bathymetryCellSize.x;\n\
+		vertexGc.y=(vertexGc.y+0.5)*bathymetryCellSize.y;\n\
 		vec4 vertexEc=gl_ModelViewMatrix*vertexGc;\n\
 		vec3 normalEc=normalize(gl_NormalMatrix*normalGc);\n\
 		\n\
@@ -833,8 +844,8 @@ void SandboxClient::compileShaders(SandboxClient::DataItem* dataItem,const GLLig
 		vertexWaterDepth=vertexGc.z-bathy;\n\
 		\n\
 		/* Transform the vertex and its normal vector from grid space to eye space for illumination: */\n\
-		vertexGc.x=(vertexGc.x-0.5)*waterCellSize.x;\n\
-		vertexGc.y=(vertexGc.y-0.5)*waterCellSize.y;\n\
+		vertexGc.x*=waterCellSize.x;\n\
+		vertexGc.y*=waterCellSize.y;\n\
 		vec4 vertexEc=gl_ModelViewMatrix*vertexGc;\n\
 		vec3 normalEc=normalize(gl_NormalMatrix*normalGc);\n\
 		\n\
@@ -962,8 +973,8 @@ void SandboxClient::compileShaders(SandboxClient::DataItem* dataItem,const GLLig
 		normalGc.z=1.0*waterCellSize.x*waterCellSize.y;\n\
 		\n\
 		/* Transform the vertex and its normal vector from grid space to eye space for illumination: */\n\
-		vertexGc.x=(vertexGc.x-0.5)*waterCellSize.x;\n\
-		vertexGc.y=(vertexGc.y-0.5)*waterCellSize.y;\n\
+		vertexGc.x*=waterCellSize.x;\n\
+		vertexGc.y*=waterCellSize.y;\n\
 		vec4 vertexEc=gl_ModelViewMatrix*vertexGc;\n\
 		vec3 normalEc=normalize(gl_NormalMatrix*normalGc);\n\
 		\n\
@@ -1031,7 +1042,7 @@ void SandboxClient::compileShaders(SandboxClient::DataItem* dataItem,const GLLig
 
 SandboxClient::SandboxClient(int& argc,char**& argv)
 	:Vrui::Application(argc,argv),
-	 remoteClient(0),
+	 remoteClient(0),connected(false),
 	 elevationColorMap(0),
 	 sun(0),
 	 gridVersion(0),
@@ -1070,6 +1081,7 @@ SandboxClient::SandboxClient(int& argc,char**& argv)
 	try
 		{
 		remoteClient=new RemoteClient(serverHostName,serverPort);
+		connected=true;
 		}
 	catch(const std::runtime_error& err)
 		{
@@ -1123,7 +1135,6 @@ SandboxClient::~SandboxClient(void)
 	{
 	/* Disconnect from the remote AR Sandbox: */
 	dispatcher.stopThread();
-	communicationThread.join();
 	delete remoteClient;
 	
 	/* Release allocated resources: */
@@ -1166,8 +1177,20 @@ void SandboxClient::frame(void)
 		undersnow=head[2]<=remoteClient->calcBathymetry(head2[0],head2[1])+remoteClient->calcSnowHeight(head2[0],head2[1]);
 		}
 	
-	/* Send the current head position and view direction to the remote AR Sandbox: */
-	remoteClient->sendViewer(head,Vrui::getViewDirection());
+	if(connected)
+		{
+		try
+			{
+			/* Send the current head position and view direction to the remote AR Sandbox: */
+			remoteClient->sendViewer(head,Vrui::getViewDirection());
+			}
+		catch(const std::runtime_error&)
+			{
+			/* Show an error message and disconnect from the remote AR Sandbox: */
+			Misc::sourcedUserError(__PRETTY_FUNCTION__,"Disconnected from remote AR Sandbox");
+			connected=false;
+			}
+		}
 	}
 
 void SandboxClient::display(GLContextData& contextData) const
@@ -1414,9 +1437,9 @@ void SandboxClient::initContext(GLContextData& contextData) const
 	for(unsigned int y=0;y<bSize[1];++y)
 		for(unsigned int x=0;x<bSize[0];++x,++vPtr)
 			{
-			/* Set the template vertex' position to the cell corner's position: */
-			vPtr->position[0]=GLfloat(x)+1.0f;
-			vPtr->position[1]=GLfloat(y)+1.0f;
+			/* Set the template vertex' position to the cell center's position: */
+			vPtr->position[0]=GLfloat(x)+0.5f;
+			vPtr->position[1]=GLfloat(y)+0.5f;
 			}
 	glUnmapBufferARB(GL_ARRAY_BUFFER_ARB);
 	glBindBufferARB(GL_ARRAY_BUFFER_ARB,0);

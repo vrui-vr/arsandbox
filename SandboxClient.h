@@ -126,6 +126,7 @@ class SandboxClient:public Vrui::Application,public GLObject,public Vrui::Transp
 	
 	/* Elements: */
 	RemoteClient* remoteClient; // Client object connected to the remote AR Sandbox server
+	bool connected; // Flag if the remote AR Sandbox server is still connected
 	Size gSize; // Size of the remote AR Sandbox's cell-centered property grids
 	Size bSize; // Size of the remote AR Sandbox's bathymetry grid
 	Scalar cellSize[2]; // Cell size of the remote AR Sandbox's property grids
@@ -133,7 +134,6 @@ class SandboxClient:public Vrui::Application,public GLObject,public Vrui::Transp
 	GLfloat quantFactor; // Un-quantization factor for the remote AR Sandbox's property grids
 	ElevationColorMap* elevationColorMap; // The elevation color map
 	Threads::EventDispatcherThread dispatcher; // Dispatcher for events on the TCP pipe
-	Threads::Thread communicationThread; // Thread to handle communication with the remote AR Sandbox in the background
 	Vrui::Lightsource* sun; // Light source representing the sun
 	unsigned int gridVersion; // Version number of most-recently received grids from the remote AR Sandbox
 	bool underwater; // Flag if the main viewer's head is currently under water
