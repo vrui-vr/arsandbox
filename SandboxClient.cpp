@@ -743,8 +743,8 @@ void SandboxClient::compileShaders(SandboxClient::DataItem* dataItem,const GLLig
 		vertexWaterDepth=vertexGc.z-bathy;\n\
 		\n\
 		/* Transform the vertex and its normal vector from grid space to eye space for illumination: */\n\
-		vertexGc.x=(vertexGc.x-0.5)*waterCellSize.x;\n\
-		vertexGc.y=(vertexGc.y-0.5)*waterCellSize.y;\n\
+		vertexGc.x*=waterCellSize.x;\n\
+		vertexGc.y*=waterCellSize.y;\n\
 		vec4 vertexEc=gl_ModelViewMatrix*vertexGc;\n\
 		vec3 normalEc=normalize(gl_NormalMatrix*normalGc);\n\
 		\n\
