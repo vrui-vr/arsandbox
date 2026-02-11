@@ -11,6 +11,6 @@ The ARSandbox package contains the sandbox application itself, `SARndbox`, and a
 
 ---
 
-**Documentation:** [vrui-vr.github.io/docs/arsandbox](https://vrui-vr.github.io/docs/arsandbox/)
+**Documentation:** [vrui-vr.github.io/arsandbox](https://vrui-vr.github.io//arsandbox/)
 
 **Source code:** [github.com/vrui-vr/arsandbox](https://github.com/vrui-vr/arsandbox)
