@@ -1,4 +1,4 @@
-<!-- ## Step 5: Measure the extents of the sand surface -->
+# Step 5: Measure the extents of the sand surface
 
 The Augmented Reality Sandbox needs to know the lateral extents of the visible sand surface with respect to the base plane. These are defined by measuring the 3D positions of the four corners of the flattened average sand surface using `RawKinectViewer` and a 3D measurement tool, and then entering those positions into the sandbox layout file.
 

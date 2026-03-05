@@ -1,4 +1,4 @@
-<!-- ## Step 8: Run the Augmented Reality Sandbox -->
+# Step 8: Run the Augmented Reality Sandbox
 
 At this point, calibration is complete. It is now possible to run the main Augmented Reality Sandbox application from inside the source code directory (or the -- optionally chosen -- installation directory):
 
