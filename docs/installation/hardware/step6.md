@@ -1,4 +1,4 @@
-<!-- ## Step 6: Mount the projector above the sandbox -->
+# Step 6: Mount the projector above the sandbox
 
 Just like with the Kinect camera, the Augmented Reality Sandbox is capable of dealing with arbitrary projector alignments. As long as there is some overlap between the Kinect camera's field-of-view and the projector's projection area, the two can be calibrated with respect to each other. However, for several reasons, it is best to align the projector carefully such that it projects perpendicularly to the flattened average sand surface. The main reason is pixel distortion: if the projection is wildly off-axis, the size of projected pixels will change sometimes drastically along the sand surface. While the Augmented Reality Sandbox can account for overall geometric distortion, it cannot change the size of displayed pixels, and the projected image looks best if all pixels are approximately square and the same size.
 

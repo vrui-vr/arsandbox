@@ -1,4 +1,4 @@
-<!-- ## Step 1: Per-pixel depth correction (optional) -->
+# Step 1: Per-pixel depth correction (optional)
 
 Kinect cameras have non-linear distortions in their depth measurements due to uncorrected lens distortions in the depth camera. The Kinect 3D video capture project has a calibration tool to gather per-pixel correction factors to "straighten out" the depth image.
 

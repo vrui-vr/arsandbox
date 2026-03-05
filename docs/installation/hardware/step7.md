@@ -1,4 +1,4 @@
-<!-- ## Step 7: Calculate the projector calibration matrix -->
+# Step 7: Calculate the projector calibration matrix
 
 The most important step to create a true augmented reality display is to calibrate the Kinect camera capturing the sand surface and the projector projecting onto it with respect to each other, so that the projected colors and topographic contour lines appear exactly in the right place. Without this calibration, the Augmented Reality Sandbox is just a sandbox with some projection.
 
