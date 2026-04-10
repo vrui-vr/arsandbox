@@ -1,7 +1,7 @@
 /***********************************************************************
 SurfaceRenderer - Class to render a surface defined by a regular grid in
 depth image space.
-Copyright (c) 2012-2025 Oliver Kreylos
+Copyright (c) 2012-2026 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -26,6 +26,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <vector>
 #include <Misc/PrintInteger.h>
 #include <Misc/MessageLogger.h>
+#include <Threads/FunctionCalls.h>
 #include <GL/gl.h>
 #include <GL/GLMiscTemplates.h>
 #include <GL/GLVertexArrayParts.h>
@@ -70,7 +71,7 @@ SurfaceRenderer::DataItem::~DataItem(void)
 Methods of class SurfaceRenderer:
 ********************************/
 
-void SurfaceRenderer::shaderSourceFileChanged(const IO::FileMonitor::Event& event)
+void SurfaceRenderer::shaderSourceFileChanged(IO::FileMonitor::Event& event)
 	{
 	/* Invalidate the single-pass surface shader: */
 	++surfaceSettingsVersion;
@@ -583,9 +584,9 @@ SurfaceRenderer::SurfaceRenderer(const DepthImageRenderer* sDepthImageRenderer)
 		tangentDepthProjection*=PTransform::scale(PTransform::Scale(-1,-1,-1));
 	
 	/* Monitor the external shader source files: */
-	fileMonitor.addPath((std::string(CONFIG_SHADERDIR)+std::string("/SurfaceAddContourLines.fs")).c_str(),IO::FileMonitor::Modified,Misc::createFunctionCall(this,&SurfaceRenderer::shaderSourceFileChanged));
-	fileMonitor.addPath((std::string(CONFIG_SHADERDIR)+std::string("/SurfaceIlluminate.fs")).c_str(),IO::FileMonitor::Modified,Misc::createFunctionCall(this,&SurfaceRenderer::shaderSourceFileChanged));
-	fileMonitor.addPath((std::string(CONFIG_SHADERDIR)+std::string("/SurfaceAddWaterColor.fs")).c_str(),IO::FileMonitor::Modified,Misc::createFunctionCall(this,&SurfaceRenderer::shaderSourceFileChanged));
+	fileMonitor.addPath((std::string(CONFIG_SHADERDIR)+std::string("/SurfaceAddContourLines.fs")).c_str(),IO::FileMonitor::Modified,*Threads::createFunctionCall(this,&SurfaceRenderer::shaderSourceFileChanged));
+	fileMonitor.addPath((std::string(CONFIG_SHADERDIR)+std::string("/SurfaceIlluminate.fs")).c_str(),IO::FileMonitor::Modified,*Threads::createFunctionCall(this,&SurfaceRenderer::shaderSourceFileChanged));
+	fileMonitor.addPath((std::string(CONFIG_SHADERDIR)+std::string("/SurfaceAddWaterColor.fs")).c_str(),IO::FileMonitor::Modified,*Threads::createFunctionCall(this,&SurfaceRenderer::shaderSourceFileChanged));
 	fileMonitor.startPolling();
 	}
 

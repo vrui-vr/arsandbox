@@ -22,8 +22,8 @@ surface using a calibrated projector.
 Requirements
 ============
 
-The Augmented Reality Sandbox requires Vrui version 14.0 build 001 or
-newer, and the Kinect 3D Video Capture Project version 5.0 or newer.
+The Augmented Reality Sandbox requires Vrui version 15.0 build 001 or
+newer, and the Kinect 3D Video Capture Project version 6.0 or newer.
 
 Installation Guide
 ==================

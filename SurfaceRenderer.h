@@ -1,7 +1,7 @@
 /***********************************************************************
 SurfaceRenderer - Class to render a surface defined by a regular grid in
 depth image space.
-Copyright (c) 2012-2023 Oliver Kreylos
+Copyright (c) 2012-2026 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -103,7 +103,7 @@ class SurfaceRenderer:public GLObject
 	double animationTime; // Time value for water animation
 	
 	/* Private methods: */
-	void shaderSourceFileChanged(const IO::FileMonitor::Event& event); // Callback called when one of the external shader source files is changed
+	void shaderSourceFileChanged(IO::FileMonitor::Event& event); // Callback called when one of the external shader source files is changed
 	void updateSinglePassSurfaceShader(const GLLightTracker& lt,DataItem* dataItem) const; // Updates the given single-pass surface rendering shader based on current renderer settings
 	void renderPixelCornerElevations(const Rect& viewport,const PTransform& projectionModelview,GLContextData& contextData,TextureTracker& textureTracker,DataItem* dataItem) const; // Creates texture containing pixel-corner elevations based on the current depth image
 	

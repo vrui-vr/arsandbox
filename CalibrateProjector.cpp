@@ -1,7 +1,7 @@
 /***********************************************************************
 CalibrateProjector - Utility to calculate the calibration transformation
 of a projector into a Kinect-captured 3D space.
-Copyright (c) 2012-2018 Oliver Kreylos
+Copyright (c) 2012-2026 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -28,7 +28,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <stdexcept>
 #include <iostream>
 #include <iomanip>
-#include <Misc/FunctionCalls.h>
+#include <Threads/FunctionCalls.h>
 #include <IO/ValueSource.h>
 #include <IO/CSVSource.h>
 #include <IO/File.h>
@@ -379,11 +379,12 @@ CalibrateProjector::CalibrateProjector(int& argc,char**& argv)
 	#endif
 	
 	/* Start streaming from the 3D video source and extracting disks: */
-	diskExtractor->startStreaming(Misc::createFunctionCall(this,&CalibrateProjector::diskExtractionCallback));
+	diskExtractor->startStreaming(*Threads::createFunctionCall(this,&CalibrateProjector::diskExtractionCallback));
 	#if !KINECT_CONFIG_USE_SHADERPROJECTOR
-	projector->startStreaming(Misc::createFunctionCall(this,&CalibrateProjector::meshStreamingCallback));
+	projector->startStreaming(*Threads::createFunctionCall(this,&CalibrateProjector::meshStreamingCallback));
 	#endif
-	camera->startStreaming(Misc::createFunctionCall(projector,&Kinect::ProjectorType::setColorFrame),Misc::createFunctionCall(this,&CalibrateProjector::depthStreamingCallback));
+	camera->setStreamingCallbacks(*Threads::createFunctionCall(projector,&Kinect::ProjectorType::setColorFrame),*Threads::createFunctionCall(this,&CalibrateProjector::depthStreamingCallback));
+	camera->startStreaming();
 	
 	/* Start capturing the initial background frame: */
 	startBackgroundCapture();
@@ -621,7 +622,7 @@ void CalibrateProjector::startBackgroundCapture(void)
 		/* Tell the 3D camera to capture a new background frame: */
 		capturingBackground=true;
 		std::cout<<"CalibrateProjector: Capturing "<<numBackgroundFrames<<" background frames..."<<std::flush;
-		directCamera->captureBackground(numBackgroundFrames,true,Misc::createFunctionCall(this,&CalibrateProjector::backgroundCaptureCompleteCallback));
+		directCamera->captureBackground(numBackgroundFrames,*Threads::createFunctionCall(this,&CalibrateProjector::backgroundCaptureCompleteCallback),true);
 		}
 	}
 

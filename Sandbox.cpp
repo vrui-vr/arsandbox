@@ -1,6 +1,6 @@
 /***********************************************************************
 Sandbox - Vrui application to drive an augmented reality sandbox.
-Copyright (c) 2012-2025 Oliver Kreylos
+Copyright (c) 2012-2026 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -35,12 +35,12 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <Misc/SizedTypes.h>
 #include <Misc/SelfDestructPointer.h>
 #include <Misc/FixedArray.h>
-#include <Misc/FunctionCalls.h>
 #include <Misc/MessageLogger.h>
 #include <Misc/FileNameExtensions.h>
 #include <Misc/StandardValueCoders.h>
 #include <Misc/ArrayValueCoders.h>
 #include <Misc/ConfigurationFile.h>
+#include <Threads/FunctionCalls.h>
 #include <IO/File.h>
 #include <IO/ValueSource.h>
 #include <IO/OpenFile.h>
@@ -434,9 +434,9 @@ GLMotif::PopupMenu* Sandbox::createMainMenu(void)
 		
 		/* Create buttons to load and save water simulation property grids: */
 		GLMotif::Button* loadGridFileButton=new GLMotif::Button("LoadGridFileButton",mainMenu,"Load Grid Properties...");
-		gridPropertyFileHelper.addLoadCallback(loadGridFileButton,Misc::createFunctionCall(this,&Sandbox::loadGridPropertyFileCallback));
+		gridPropertyFileHelper.addLoadCallback(loadGridFileButton,*Threads::createFunctionCall(this,&Sandbox::loadGridPropertyFileCallback));
 		GLMotif::Button* saveGridFileButton=new GLMotif::Button("SaveGridFileButton",mainMenu,"Save Grid Properties...");
-		gridPropertyFileHelper.addSaveCallback(saveGridFileButton,Misc::createFunctionCall(this,&Sandbox::saveGridPropertyFileCallback));
+		gridPropertyFileHelper.addSaveCallback(saveGridFileButton,*Threads::createFunctionCall(this,&Sandbox::saveGridPropertyFileCallback));
 		}
 	
 	/* Finish building the main menu: */
@@ -1198,9 +1198,10 @@ Sandbox::Sandbox(int& argc,char**& argv)
 	
 	/* Start streaming color and depth frames: */
 	if(propertyGridCreator!=0)
-		camera->startStreaming(Misc::createFunctionCall(propertyGridCreator,&PropertyGridCreator::receiveRawFrame),Misc::createFunctionCall(this,&Sandbox::rawDepthFrameDispatcher));
+		camera->setStreamingCallbacks(*Threads::createFunctionCall(propertyGridCreator,&PropertyGridCreator::receiveRawFrame),*Threads::createFunctionCall(this,&Sandbox::rawDepthFrameDispatcher));
 	else
-		camera->startStreaming(0,Misc::createFunctionCall(this,&Sandbox::rawDepthFrameDispatcher));
+		camera->setDepthStreamingCallback(*Threads::createFunctionCall(this,&Sandbox::rawDepthFrameDispatcher));
+	camera->startStreaming();
 	
 	if(useRemoteServer)
 		{

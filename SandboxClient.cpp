@@ -26,8 +26,8 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <stdexcept>
 #include <iostream>
 #include <Misc/PrintInteger.h>
-#include <Misc/FunctionCalls.h>
 #include <Misc/MessageLogger.h>
+#include <Threads/FunctionCalls.h>
 #include <Comm/TCPPipe.h>
 #include <Math/Math.h>
 #include <Geometry/LinearUnit.h>
@@ -1148,7 +1148,7 @@ void SandboxClient::toolCreationCallback(Vrui::ToolManager::ToolCreationCallback
 	if(surfaceNavigationTool!=0)
 		{
 		/* Set the new tool's alignment function: */
-		surfaceNavigationTool->setAlignFunction(Misc::createFunctionCall(this,&SandboxClient::alignSurfaceFrame));
+		surfaceNavigationTool->setAlignFunction(*Threads::createFunctionCall(this,&SandboxClient::alignSurfaceFrame));
 		}
 	
 	/* Call the base class method: */

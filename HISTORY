@@ -199,4 +199,6 @@ SARndbox-5.1:
   RemoteClient class.
 
 SARndbox-5.2:
-- Bumped Vrui version requirement to Vrui-14.0-001.
+- Bumped Vrui version requirement to Vrui-15.0-001.
+- Bumped Kinect version requirement to Kinect-6.0.
+- Adapted sources to API changes in Vrui-15.0-001 and Kinect-6.0.
