@@ -2,7 +2,7 @@
 WaterTable2 - Class to simulate water flowing over a surface using
 improved water flow simulation based on Saint-Venant system of partial
 differenctial equations.
-Copyright (c) 2012-2025 Oliver Kreylos
+Copyright (c) 2012-2026 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -466,8 +466,20 @@ WaterTable2::WaterTable2(const Size& sSize,const DepthImageRenderer* sDepthImage
 	
 	/* Calculate the domain of upright elevation model space: */
 	domain=Box::empty;
+	#if 0
+	/* Calculate the bounding box of the four base plane corners: */
 	for(int i=0;i<4;++i)
 		domain.addPoint(baseTransform.transform(bpc[i]));
+	#else
+	/* Fit the domain into the four base plane corners: */
+	Point bbpc[4];
+	for(int i=0;i<4;++i)
+		bbpc[i]=baseTransform.transform(bpc[i]);
+	domain.min[0]=Math::max(bbpc[0][0],bbpc[2][0]);
+	domain.max[0]=Math::min(bbpc[1][0],bbpc[3][0]);
+	domain.min[1]=Math::max(bbpc[0][1],bbpc[1][1]);
+	domain.max[1]=Math::min(bbpc[2][1],bbpc[3][1]);
+	#endif
 	domain.min[2]=Scalar(-20);
 	domain.max[2]=Scalar(100);
 	

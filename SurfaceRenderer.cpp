@@ -37,6 +37,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <GL/Extensions/GLARBVertexShader.h>
 #include <GL/Extensions/GLEXTFramebufferObject.h>
 #include <GL/GLLightTracker.h>
+#include <GL/GLClipPlaneTracker.h>
 #include <GL/GLContextData.h>
 #include <GL/GLTransformationWrappers.h>
 #include <GL/GLGeometryVertex.h>
@@ -55,7 +56,7 @@ Methods of class SurfaceRenderer::DataItem:
 
 SurfaceRenderer::DataItem::DataItem(void)
 	:contourLineFramebufferObject(0),contourLineDepthBufferObject(0),contourLineColorTextureObject(0),contourLineVersion(0),
-	 surfaceSettingsVersion(0),lightTrackerVersion(0)
+	 surfaceSettingsVersion(0),lightTrackerVersion(0),clipPlaneTrackerVersion(0),clipping(false)
 	{
 	}
 
@@ -77,7 +78,7 @@ void SurfaceRenderer::shaderSourceFileChanged(IO::FileMonitor::Event& event)
 	++surfaceSettingsVersion;
 	}
 
-void SurfaceRenderer::updateSinglePassSurfaceShader(const GLLightTracker& lt,SurfaceRenderer::DataItem* dataItem) const
+void SurfaceRenderer::updateSinglePassSurfaceShader(const GLLightTracker& lt,const GLClipPlaneTracker& cpt,SurfaceRenderer::DataItem* dataItem) const
 	{
 	/* Access the single-pass surface shader: */
 	Shader& shader=dataItem->heightMapShader;
@@ -185,11 +186,24 @@ void SurfaceRenderer::updateSinglePassSurfaceShader(const GLLightTracker& lt,Sur
 				}
 			}
 		
+		/* Check if there are any enabled clipping planes: */
+		int numClipPlanes=cpt.getNumEnabledClipPlanes();
+		
+		/* Check if we need the vertex's eye-space position: */
+		if(illuminate||numClipPlanes>0)
+			{
+			vertexUniforms+="\
+				uniform mat4 modelview; // Transformation from camera space to eye space\n";
+			
+			vertexMain+="\
+				/* Transform the vertex from depth image space to eye space: */\n\
+				vec4 vertexEc=modelview*vertexCc;\n";
+			}
+		
 		if(illuminate)
 			{
 			/* Add declarations for illumination: */
 			vertexUniforms+="\
-				uniform mat4 modelview; // Transformation from camera space to eye space\n\
 				uniform mat4 tangentModelviewDepthProjection; // Transformation from depth image space to eye space for tangent planes\n";
 			
 			vertexVaryings+="\
@@ -204,8 +218,7 @@ void SurfaceRenderer::updateSinglePassSurfaceShader(const GLLightTracker& lt,Sur
 				tangentDic.z=2.0;\n\
 				tangentDic.w=-dot(vertexDic.xyz,tangentDic.xyz)/vertexDic.w;\n\
 				\n\
-				/* Transform the vertex and its tangent plane from depth image space to eye space: */\n\
-				vec4 vertexEc=modelview*vertexCc;\n\
+				/* Transform the vertex's tangent plane from depth image space to eye space: */\n\
 				vec3 normalEc=normalize((tangentModelviewDepthProjection*tangentDic).xyz);\n\
 				\n\
 				/* Initialize the color accumulators: */\n\
@@ -254,6 +267,24 @@ void SurfaceRenderer::updateSinglePassSurfaceShader(const GLLightTracker& lt,Sur
 				/* Transform the vertex from camera space to water level texture coordinate space: */\n\
 				waterTexCoord=(waterTransform*vertexCc).xy;\n\
 				\n";
+			}
+		
+		if(numClipPlanes>0)
+			{
+			/* Find the highest index of any enabled clip planes: */
+			int maxCPIndex=-1;
+			for(int i=0;i<cpt.getMaxNumClipPlanes();++i)
+				if(cpt.getClipPlaneState(i).isEnabled()&&maxCPIndex<i)
+					maxCPIndex=i;
+			
+			/* Add declarations for clipping: */
+			vertexVaryings+="\
+				varying float gl_ClipDistance[";
+			char maxCPIndexBuffer[11];
+			vertexVaryings+=Misc::print(maxCPIndex+1,maxCPIndexBuffer+10);
+			vertexVaryings+="]; // Vertex clip plane distances for all enabled clipping planes\n";
+			
+			vertexMain+=cpt.createCalcClipDistances("vertexEc");
 			}
 		
 		/* Finish the vertex shader's main function: */
@@ -449,10 +480,14 @@ void SurfaceRenderer::updateSinglePassSurfaceShader(const GLLightTracker& lt,Sur
 				shader.setUniformLocation("dippingBedPlaneEq");
 			shader.setUniformLocation("dippingBedThickness");
 			}
+		if(illuminate||numClipPlanes>0)
+			{
+			/* Query illumination and/or clipping uniform variables: */
+			shader.setUniformLocation("modelview");
+			}
 		if(illuminate)
 			{
 			/* Query illumination uniform variables: */
-			shader.setUniformLocation("modelview");
 			shader.setUniformLocation("tangentModelviewDepthProjection");
 			}
 		if(waterTable!=0&&dem==0)
@@ -606,9 +641,10 @@ void SurfaceRenderer::initContext(GLContextData& contextData) const
 	contextData.addDataItem(this,dataItem);
 	
 	/* Create the height map render shader: */
-	updateSinglePassSurfaceShader(*contextData.getLightTracker(),dataItem);
+	updateSinglePassSurfaceShader(*contextData.getLightTracker(),*contextData.getClipPlaneTracker(),dataItem);
 	dataItem->surfaceSettingsVersion=surfaceSettingsVersion;
 	dataItem->lightTrackerVersion=contextData.getLightTracker()->getVersion();
+	dataItem->clipPlaneTrackerVersion=contextData.getClipPlaneTracker()->getVersion();
 	
 	/* Create the global ambient height map render shader: */
 	dataItem->globalAmbientHeightMapShader.addShader(compileVertexShader("SurfaceGlobalAmbientHeightMapShader"));
@@ -779,12 +815,13 @@ void SurfaceRenderer::renderSinglePass(const SurfaceRenderer::Rect& viewport,con
 		}
 	
 	/* Check if the single-pass surface shader is outdated: */
-	if(dataItem->surfaceSettingsVersion!=surfaceSettingsVersion||(illuminate&&dataItem->lightTrackerVersion!=contextData.getLightTracker()->getVersion()))
+	if(dataItem->surfaceSettingsVersion!=surfaceSettingsVersion||(illuminate&&dataItem->lightTrackerVersion!=contextData.getLightTracker()->getVersion())||dataItem->clipPlaneTrackerVersion!=contextData.getClipPlaneTracker()->getVersion())
 		{
 		/* Rebuild the shader: */
 		try
 			{
-			updateSinglePassSurfaceShader(*contextData.getLightTracker(),dataItem);
+			updateSinglePassSurfaceShader(*contextData.getLightTracker(),*contextData.getClipPlaneTracker(),dataItem);
+			dataItem->clipping=contextData.getClipPlaneTracker()->getNumEnabledClipPlanes()>0;
 			}
 		catch(const std::runtime_error& err)
 			{
@@ -794,6 +831,7 @@ void SurfaceRenderer::renderSinglePass(const SurfaceRenderer::Rect& viewport,con
 		/* Mark the shader as up-to-date: */
 		dataItem->surfaceSettingsVersion=surfaceSettingsVersion;
 		dataItem->lightTrackerVersion=contextData.getLightTracker()->getVersion();
+		dataItem->clipPlaneTrackerVersion=contextData.getClipPlaneTracker()->getVersion();
 		}
 	
 	/* Install the single-pass surface shader: */
@@ -856,11 +894,14 @@ void SurfaceRenderer::renderSinglePass(const SurfaceRenderer::Rect& viewport,con
 		dataItem->heightMapShader.uploadUniform(dippingBedThickness);
 		}
 	
-	if(illuminate)
+	if(illuminate||dataItem->clipping)
 		{
 		/* Upload the modelview matrix: */
 		dataItem->heightMapShader.uploadUniform(modelview);
-		
+		}
+	
+	if(illuminate)
+		{
 		/* Calculate and upload the transposed tangent-plane modelview depth projection matrix: */
 		PTransform tangentModelviewDepthProjection=tangentDepthProjection;
 		tangentModelviewDepthProjection*=Geometry::invert(modelview);

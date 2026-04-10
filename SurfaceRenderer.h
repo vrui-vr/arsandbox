@@ -41,6 +41,7 @@ class TextureTracker;
 class DepthImageRenderer;
 class ElevationColorMap;
 class GLLightTracker;
+class GLClipPlaneTracker;
 class DEM;
 class WaterTable2;
 
@@ -65,6 +66,8 @@ class SurfaceRenderer:public GLObject
 		Shader heightMapShader; // Shader program to render the surface using a height color map
 		unsigned int surfaceSettingsVersion; // Version number of surface settings for which the height map shader was built
 		unsigned int lightTrackerVersion; // Version number of light tracker state for which the height map shader was built
+		unsigned int clipPlaneTrackerVersion; // Version number of clipping plane tracker state for which the height map shader was built
+		bool clipping; // Flag if there are enabled clipping planes
 		Shader globalAmbientHeightMapShader; // Shader program to render the global ambient component of the surface using a height color map
 		Shader shadowedIlluminatedHeightMapShader; // Shader program to render the surface using illumination with shadows and a height color map
 		
@@ -104,7 +107,7 @@ class SurfaceRenderer:public GLObject
 	
 	/* Private methods: */
 	void shaderSourceFileChanged(IO::FileMonitor::Event& event); // Callback called when one of the external shader source files is changed
-	void updateSinglePassSurfaceShader(const GLLightTracker& lt,DataItem* dataItem) const; // Updates the given single-pass surface rendering shader based on current renderer settings
+	void updateSinglePassSurfaceShader(const GLLightTracker& lt,const GLClipPlaneTracker& cpt,DataItem* dataItem) const; // Updates the given single-pass surface rendering shader based on current renderer settings
 	void renderPixelCornerElevations(const Rect& viewport,const PTransform& projectionModelview,GLContextData& contextData,TextureTracker& textureTracker,DataItem* dataItem) const; // Creates texture containing pixel-corner elevations based on the current depth image
 	
 	/* Constructors and destructors: */

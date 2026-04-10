@@ -202,3 +202,10 @@ SARndbox-5.2:
 - Bumped Vrui version requirement to Vrui-15.0-001.
 - Bumped Kinect version requirement to Kinect-6.0.
 - Adapted sources to API changes in Vrui-15.0-001 and Kinect-6.0.
+- Added ability to clip surface rendering with OpenGL clipping planes.
+- Added -ctb command line option to SARndbox, and clipToBox
+  configuration file setting to clip surface rendering to the inside of
+  the quadrilateral defined by the four box corners in the sandbox
+  layout file.
+- Changed behavior of WaterTable2 constructor to limit water rendering
+  to a rectangle fitting inside the box corner quadrilateral.

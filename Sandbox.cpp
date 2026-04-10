@@ -79,6 +79,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <Vrui/CoordinateManager.h>
 #include <Vrui/Lightsource.h>
 #include <Vrui/LightsourceManager.h>
+#include <Vrui/ClipPlaneManager.h>
 #include <Vrui/Viewer.h>
 #include <Vrui/ToolManager.h>
 #include <Vrui/DisplayState.h>
@@ -631,6 +632,9 @@ void printUsage(void)
 	std::cout<<"  -slf <sandbox layout file name>"<<std::endl;
 	std::cout<<"     Loads the sandbox layout file of the given name"<<std::endl;
 	std::cout<<"     Default: "<<CONFIG_CONFIGDIR<<'/'<<CONFIG_DEFAULTBOXLAYOUTFILENAME<<std::endl;
+	std::cout<<"  -ctb"<<std::endl;
+	std::cout<<"     Limits all rendering to the inside of the sand surface area defined in the"<<std::endl;
+	std::cout<<"     sandbox layout file"<<std::endl;
 	std::cout<<"  -er <min elevation> <max elevation>"<<std::endl;
 	std::cout<<"     Sets the range of valid sand surface elevations relative to the ground"<<std::endl;
 	std::cout<<"     plane in cm"<<std::endl;
@@ -754,6 +758,7 @@ Sandbox::Sandbox(int& argc,char**& argv)
 	sandboxLayoutFileName.push_back('/');
 	sandboxLayoutFileName.append(CONFIG_DEFAULTBOXLAYOUTFILENAME);
 	sandboxLayoutFileName=cfg.retrieveString("./sandboxLayoutFileName",sandboxLayoutFileName);
+	bool clipToBox=cfg.retrieveValue<bool>("./clipToBox",false);
 	elevationRange=cfg.retrieveValue<Math::Interval<double> >("./elevationRange",Math::Interval<double>(-1000.0,1000.0));
 	bool haveHeightMapPlane=cfg.hasTag("./heightMapPlane");
 	Plane heightMapPlane;
@@ -826,6 +831,10 @@ Sandbox::Sandbox(int& argc,char**& argv)
 				{
 				++i;
 				sandboxLayoutFileName=argv[i];
+				}
+			else if(strcasecmp(argv[i]+1,"ctb")==0)
+				{
+				clipToBox=true;
 				}
 			else if(strcasecmp(argv[i]+1,"er")==0)
 				{
@@ -1154,6 +1163,15 @@ Sandbox::Sandbox(int& argc,char**& argv)
 	boxTransform=ONTransform::rotate(Geometry::invert(ONTransform::Rotation::fromBaseVectors(x,y)));
 	ONTransform::Point center=Geometry::mid(Geometry::mid(basePlaneCorners[0],basePlaneCorners[1]),Geometry::mid(basePlaneCorners[2],basePlaneCorners[3]));
 	boxTransform*=ONTransform::translateToOriginFrom(center);
+	
+	if(clipToBox)
+		{
+		/* Set up clipping planes to limit rendering to the sandbox area: */
+		Vrui::getClipPlaneManager()->createClipPlane(false,Vrui::Plane(z^(basePlaneCorners[1]-basePlaneCorners[0]),basePlaneCorners[0]));
+		Vrui::getClipPlaneManager()->createClipPlane(false,Vrui::Plane(z^(basePlaneCorners[3]-basePlaneCorners[1]),basePlaneCorners[1]));
+		Vrui::getClipPlaneManager()->createClipPlane(false,Vrui::Plane(z^(basePlaneCorners[2]-basePlaneCorners[3]),basePlaneCorners[3]));
+		Vrui::getClipPlaneManager()->createClipPlane(false,Vrui::Plane(z^(basePlaneCorners[0]-basePlaneCorners[2]),basePlaneCorners[2]));
+		}
 	
 	/* Calculate the size of the sandbox area: */
 	boxSize=Geometry::dist(center,basePlaneCorners[0]);
