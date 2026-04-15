@@ -17,9 +17,8 @@
 
 These sections hold complete instructions, starting from a blank desktop PC with an Nvidia GeForce graphics processing unit (GPU). These instructions are based on the current version of the Linux Mint operating system. Due to increasing weirdness in recent versions of Mac OS X (starting with version 10.7), we can no longer recommend Mac computers and Mac OS X to drive AR Sandbox installations. 
 
-These instructions are up-to-date with the following software versions:
-<!-- needs updating -->
+<!-- These instructions are up-to-date with the following software versions:
 Linux Mint 19.3 ("Tricia") with MATE desktop environment, 64-bit version
 Version 8.0-002 of the Vrui VR Development Toolkit (automatically selected by Vrui installation script)
 Version 3.10 of the Kinect 3D Video Package
-Version 2.8 of the Augmented Reality Sandbox
+Version 2.8 of the Augmented Reality Sandbox -->
