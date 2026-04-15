@@ -2,8 +2,8 @@
 
 Installation steps 1 to 5 install Linux and the AR Sandbox software, including its underlying Vrui and Kinect packages. There is also a [full walk-through video](http://youtu.be/R0UyMeJ2pYc) of these steps, and an illustrated step-by-step guide to installing Linux Mint 19 ("Tara"). 
 
-<!-- add alert  -->
-The video is for an older version of Linux Mint as well as older versions of the Vrui, Kinect, and AR Sandbox packages; in case of any (small) discrepancies between the video and these instructions, ignore the video and follow these instructions. The illustrated guide is current. 
+???+ tip
+    The video is for an older version of Linux Mint as well as older versions of the Vrui, Kinect, and AR Sandbox packages; in case of any (small) discrepancies between the video and these instructions, ignore the video and follow these instructions. The illustrated guide is current. 
 
 <!-- check links, especially for linux mint 19 install guide -->
 
