@@ -1,11 +1,27 @@
 # System Integration, Configuration, and Calibration
 
-Installation steps 6 to 11 connect the additional system components, i.e., the 3D camera (Kinect or other camera) and the digital projector, physically align them with the sandbox for optimal image quality, and calibrate the camera with respect to the projector so that real and projected features in the sandbox line up precisely.
+<!-- define abbreviations -->
+*[ARSandbox]: Augmented Reality Sandbox
+
+## Table of Contents
+
+- [System Integration, Configuration, and Calibration](#system-integration-configuration-and-calibration)
+    - [Table of Contents](#table-of-contents)
+    - [Step 1: Connect and Configure the 3D Camera](#step-1-connect-and-configure-the-3d-camera)
+        - [Step 1a (Optional): Calculate Per-pixel Depth Correction](#step-1a-optional-calculate-per-pixel-depth-correction)
+    - [Step 2: Align the 3D Camera](#step-2-align-the-3d-camera)
+    - [Step 3: Measure Sandbox's Base Plane Equation](#step-3-measure-sandboxs-base-plane-equation)
+    - [Step 4: Measure Sandbox's 3D Box Corner Positions](#step-4-measure-sandboxs-3d-box-corner-positions)
+    - [Step 5: Align the Projector](#step-5-align-the-projector)
+    - [Step 6: Projector or Camera Calibration](#step-6-projector-or-camera-calibration)
+
+
+These installation steps connect the additional system components, specifically the 3D camera (Kinect or other camera) and the digital projector, physically align them with the sandbox for optimal image quality, and calibrate the camera with respect to the projector so that real and projected features in the sandbox line up precisely.
 
 ??? info "Heads up!"
     Checkout the [full walk-through video](http://youtu.be/R0UyMeJ2pYc) for steps through #7, as well as earlier steps. This video is for an older version of Linux Mint as well as older versions of the Vrui, Kinect, and AR Sandbox packages; in case of any (small) discrepancies between the video and these instructions, ignore the video and follow these instructions. Starting at Step 8, reference the [ARSandbox Calibration video](https://youtu.be/EW2PtRsQQr0?si=dwgqin5M8ekZwcg2). 
 
-## Step 6: Connect and Configure the 3D Camera
+## Step 1: Connect and Configure the 3D Camera
 
 Instructions for this step start at [28:52 in the walk-through video](https://youtu.be/R0UyMeJ2pYc?t=28m52s).
 
@@ -18,7 +34,7 @@ sudo /usr/local/bin/KinectUtil getCalib 0
 This might ask you for your password again; if so, enter it to continue.
 
 
-## Step 6a (Optional): Calculate Per-pixel Depth Correction
+## Step 1a (Optional): Calculate Per-pixel Depth Correction
 
 First-generation Kinect cameras (Kinect-for-Xbox-360) have a certain amount of non-linear depth distortion. If you point such a camera at a flat surface, the 3D reconstruction will not be flat, but slightly bowl-shaped. This distortion can prevent getting a good alignment between the physical sand surface and the topographic map projection in Step 10.
 
@@ -40,7 +56,7 @@ To capture a calibration tie point, keep the camera very still and press the "A"
 
 Repeat this process a few times to collect anywhere between five and ten tie points, from distances between about 0.5m and 1.5m. Once done, press the "S" key. This will calculate per-pixel depth correction factors and write them to a calibration file in the `/usr/local/etc/Vrui-8.0/Kinect-3.10` directory. RawKinectViewer will print "Writing depth correction file `/usr/local/etc/Vrui-8.0/Kinect-3.10/DepthCorrection-<camera serial number>.dat`" when it is finished. If any error messages appear at this point, close RawKinectViewer and redo the entire process. Otherwise, close RawKinectViewer, install the camera in the AR Sandbox, and continue with the next installation step.
 
-## Step 7: Align the 3D Camera
+## Step 2: Align the 3D Camera
 Align your camera so that its field of view covers the interior of your sandbox. Use RawKinectViewer to guide you during alignment. To start it, run in a terminal window:
 
 ```sh
@@ -50,7 +66,7 @@ RawKinectViewer -compress 0
 
 Ignore the color video stream on the right side of RawKinectViewer's display window and focus on the depth image stream on the left (the AR Sandbox does not use the color video stream). Move and/or rotate the camera until it can see the entire interior of your sandbox.
 
-## Step 8: Measure Sandbox's Base Plane Equation
+## Step 3: Measure Sandbox's Base Plane Equation
 
 Instructions for this step start at [0:00 in the ARSandbox Calibration video](https://youtu.be/EW2PtRsQQr0?si=O3l4AQc7fXGRddkls).
 
@@ -83,7 +99,7 @@ where the direction vector and the offset are separated by a comma.
 ??? note
     For some reason, the depth plane equation reported by second-generation Kinect cameras (Kinect-for-Xbox-One) may be inverted. Before continuing, check that the fourth component (offset) of the camera-space plane equation is in fact negative. If it is not, flip the signs of all four components of the plane equation in BoxLayout.txt, e.g., (-0.01, 0.04, -0.9991), 105.3 becomes (0.01, -0.04, 0.9991), -105.3.
 
-## Step 9: Measure Sandbox's 3D Box Corner Positions
+## Step 4: Measure Sandbox's 3D Box Corner Positions
 
 Measure the 3D extents of the sand surface. As of version 3.2 of the Kinect package, this can be done inside RawKinectViewer as well by following the instructions in the AR Sandbox calibration video, starting at 4:10. Make sure to measure the box corners in the order lower-left, lower-right, upper-left, upper-right.
 
@@ -104,7 +120,7 @@ After Steps 8 and 9 have been completed, the contents of BoxLayout.txt should lo
 
 Ensure that this text starts in the first column of the first line, and that the file contains no other text at all.
 
-## Step 10: Align the Projector
+## Step 5: Align the Projector
 
 Align your projector such that its image fills the interior of your sandbox. You can use the calibration grid drawn by Vrui's XBackground utility as a guide. In a terminal window, run:
 
@@ -118,7 +134,7 @@ Ensure to disable all digital image distortion features of your projector before
 
 Slight overprojection outside of the sandbox, and any remaining keystone distortion of the projected image, will be taken care of by the following projector calibration step.
 
-## Step 11: Projector/Camera Calibration
+## Step 6: Projector or Camera Calibration
 
 !!! warning
     Set CalibrateProjector's window to full-screen mode by pressing F11 before proceeding. 
@@ -131,6 +147,7 @@ cd ~/src/SARndbox-2.8
 ./bin/CalibrateProjector -s <width> <height>
 ```
 where `<width>` and `<height>` are the width and height of your projector's image in pixels, respectively. For example, for an XGA projector like the recommended BenQ model, the command would be:
+
 ```sh
 ./bin/CalibrateProjector -s 1024 768
 ```

@@ -1,6 +1,21 @@
 # Software Installation
 
-Installation steps 1 to 5 install Linux and the AR Sandbox software, including its underlying Vrui and Kinect packages. There is also a [full walk-through video](http://youtu.be/R0UyMeJ2pYc) of these steps, and an illustrated step-by-step guide to installing Linux Mint 19 ("Tara"). 
+<!-- define abbreviations -->
+*[ARSandbox]: Augmented Reality Sandbox
+
+## Table of Contents
+
+- [Software Installation](#software-installation)
+    - [Table of Contents](#table-of-contents)
+    - [Step 1: Install Linux](#step-1-install-linux)
+    - [Step 2: Install Nvidia Driver](#step-2-install-nvidia-driver)
+    - [Step 3: Install the Vrui VR Development Toolkit](#step-3-install-the-vrui-vr-development-toolkit)
+        - [Step 3a: Adjusting the Screen Size](#step-3a-adjusting-the-screen-size)
+    - [Step 4: Install the Kinect 3D Video Package](#step-4-install-the-kinect-3d-video-package)
+    - [Step 5: Install the Augmented Reality Sandbox](#step-5-install-the-augmented-reality-sandbox)
+
+
+These installation steps install Linux and the AR Sandbox software, including its underlying Vrui and Kinect packages. There is also a [full walk-through video](http://youtu.be/R0UyMeJ2pYc) of these steps, and an illustrated step-by-step guide to installing Linux Mint 19 ("Tara"). 
 
 ???+ tip
     The video is for an older version of Linux Mint as well as older versions of the Vrui, Kinect, and AR Sandbox packages; in case of any (small) discrepancies between the video and these instructions, ignore the video and follow these instructions. The illustrated guide is current. 
@@ -141,7 +156,7 @@ ls /usr/local/bin
 
 The sixth command might ask you to enter your password one more time; if so, enter it to continue. Check that the list of names printed by the last command contains `KinectUtil` and `RawKinectViewer`.
 
-## Step 5: 
+## Step 5:  Install the Augmented Reality Sandbox
 
 Instructions for this step start at [27:39 in the walk-through video](https://youtu.be/R0UyMeJ2pYc?t=27m39s).
 
