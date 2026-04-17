@@ -1,9 +1,0 @@
-ARSandbox:
-    - ARSandbox Overview: index.md
-    - Getting started:
-        - installation/index.md
-        - Software Installation: installation/software_installation.md
-        - System Integration, Configuration, and Calibration: installation/system_integration.md
-        - Running the Augmented Reality Sandbox: installation/running_arsandbox.md
-        - Post-Installation Setup and Fine-Tuning: installation/post_installation.md
-    - ARSandbox in action: in_action.md

@@ -1,4 +1,4 @@
-<!-- ## Step 4: Measure the base plane equation of the sand surface -->
+# Step 4: Measure the base plane equation of the sand surface
 
 ## Measuring the base plane
 

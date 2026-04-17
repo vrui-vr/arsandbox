@@ -1,4 +1,4 @@
-<!-- ## Step 3: Mount the Kinect camera above the sandbox -->
+# Step 3: Mount the Kinect camera above the sandbox
 
 In theory, the Kinect camera can be aimed at the sand surface from any position and/or angle.
 

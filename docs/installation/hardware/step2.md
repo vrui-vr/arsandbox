@@ -1,4 +1,4 @@
-<!-- ## Step 2: Internally calibrate the Kinect camera (optional) -->
+# Step 2: Internally calibrate the Kinect camera (optional)
 
 ## Background on Kinect camera calibration
 
