@@ -19,7 +19,7 @@
 These installation steps connect the additional system components, specifically the 3D camera (Kinect or other camera) and the digital projector, physically align them with the sandbox for optimal image quality, and calibrate the camera with respect to the projector so that real and projected features in the sandbox line up precisely.
 
 ??? info "Heads up!"
-    Checkout the [full walk-through video](http://youtu.be/R0UyMeJ2pYc) for steps through #7, as well as earlier steps. This video is for an older version of Linux Mint as well as older versions of the Vrui, Kinect, and AR Sandbox packages; in case of any (small) discrepancies between the video and these instructions, ignore the video and follow these instructions. Starting at Step 8, reference the [ARSandbox Calibration video](https://youtu.be/EW2PtRsQQr0?si=dwgqin5M8ekZwcg2). 
+    Checkout the [full walk-through video](http://youtu.be/R0UyMeJ2pYc) for steps through #7, as well as earlier steps. This video is for an older version of Linux Mint as well as older versions of the Vrui, Kinect, and AR Sandbox packages; in case of any (small) discrepancies between the video and these instructions, ignore the video and follow these instructions. Starting at [Step 4](#step-4-measure-sandboxs-3d-box-corner-positions), reference the [ARSandbox Calibration video](https://youtu.be/EW2PtRsQQr0?si=dwgqin5M8ekZwcg2). 
 
 ## Step 1: Connect and Configure the 3D Camera
 
@@ -36,7 +36,7 @@ This might ask you for your password again; if so, enter it to continue.
 
 ## Step 1a (Optional): Calculate Per-pixel Depth Correction
 
-First-generation Kinect cameras (Kinect-for-Xbox-360) have a certain amount of non-linear depth distortion. If you point such a camera at a flat surface, the 3D reconstruction will not be flat, but slightly bowl-shaped. This distortion can prevent getting a good alignment between the physical sand surface and the topographic map projection in Step 10.
+First-generation Kinect cameras (Kinect-for-Xbox-360) have a certain amount of non-linear depth distortion. If you point such a camera at a flat surface, the 3D reconstruction will not be flat, but slightly bowl-shaped. This distortion can prevent getting a good alignment between the physical sand surface and the topographic map projection in [Step 5](#step-5-align-the-projector).
 
 RawKinectViewer has a built-in calibration utility to correct for this distortion. This step is not necessary for operation of the AR Sandbox, but it usually improves alignment quality. Again, this issue only applies to first-generation Kinect cameras (models 1414, 1473, and 1517). It is easiest to perform this calibration step with the Kinect camera removed from the AR Sandbox, so if your Kinect is difficult to remove after assembly, it might be a good idea to do this step before putting it in place.
 
@@ -70,9 +70,9 @@ Ignore the color video stream on the right side of RawKinectViewer's display win
 
 Instructions for this step start at [0:00 in the ARSandbox Calibration video](https://youtu.be/EW2PtRsQQr0?si=O3l4AQc7fXGRddkls).
 
-Calculate your sandbox's base plane by following the beginning of the video linked above. You can use the already-running instance of RawKinectViewer from Step 7.
+Calculate your sandbox's base plane by following the beginning of the video linked above. You can use the already-running instance of RawKinectViewer from [Step 2](#step-2-align-the-3d-camera).
 
-To recap, you need to bind an "Extract Planes" tool from the root tool menu to some unused mouse button or keyboard key (see the note on "Tool Assignment" in Step 3 for details), then select "Average Frames" from RawKinectViewer's main menu, wait for the depth image display to freeze, and then draw a rectangle on the depth image by pressing and holding the button/key to which you assigned the "Extract Planes" tool. This will print the plane equation best fitting the selected rectangle to the terminal window from which you ran RawKinectViewer. After extracting the base plane, you should turn "Average Frames" back off in RawKinectViewer's main menu.
+To recap, you need to bind an "Extract Planes" tool from the root tool menu to some unused mouse button or keyboard key (see the note on "Tool Assignment" in [Step 3 in "Software Installation"](software_installation.md#step-3-install-the-vrui-vr-development-toolkit) for details), then select "Average Frames" from RawKinectViewer's main menu, wait for the depth image display to freeze, and then draw a rectangle on the depth image by pressing and holding the button/key to which you assigned the "Extract Planes" tool. This will print the plane equation best fitting the selected rectangle to the terminal window from which you ran RawKinectViewer. After extracting the base plane, you should turn "Average Frames" back off in RawKinectViewer's main menu.
 
 You need to enter the base plane equation (and the 3D sand surface extents in the next step) into the BoxLayout.txt file in etc/SARndbox-2.8 inside the SARndbox source directory. To edit the file using xed, run in a terminal window:
 
@@ -103,7 +103,7 @@ where the direction vector and the offset are separated by a comma.
 
 Measure the 3D extents of the sand surface. As of version 3.2 of the Kinect package, this can be done inside RawKinectViewer as well by following the instructions in the AR Sandbox calibration video, starting at 4:10. Make sure to measure the box corners in the order lower-left, lower-right, upper-left, upper-right.
 
-To recap, you need to bind a "Measure 3D Positions" tool from the root tool menu to some unused mouse button or keyboard key (see Step 3 for details), and then click on the corners of your sandbox in the depth image using the button/key to which you assigned the "Measure 3D Positions" tool. This will print a sequence of 3D positions to the terminal window from which you ran RawKinectViewer.
+To recap, you need to bind a "Measure 3D Positions" tool from the root tool menu to some unused mouse button or keyboard key (see [Step 3](#step-3-measure-sandboxs-base-plane-equation) for details), and then click on the corners of your sandbox in the depth image using the button/key to which you assigned the "Measure 3D Positions" tool. This will print a sequence of 3D positions to the terminal window from which you ran RawKinectViewer.
 
 After you have copied the box corner positions into the text editor as described in the video, save the file (via the "File" menu or by pressing Ctrl-s), and quit from the text editor (via the "File" menu or by pressing Ctrl-q or by closing the window).
 

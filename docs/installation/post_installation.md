@@ -192,6 +192,7 @@ DP-1 disconnected (normal left inverted right x axis y axis)
 ```
 
 This report shows two connected monitors: One with 2560x1600 pixels connected to port DVI-I-1, and a secondary with 1600x1200 pixels and origin +2560+0, i.e., positioned to the right of the main monitor, connected to port DVI-D-0.
+
 From your xrandr report, determine the port name connected to your sandbox projector, for example by looking for the projector's pixel size, e.g., 1024x768. If your projector is connected via an HDMI cable, the port name will usually be something like HDMI-0. Then direct CalibrateProjector and SARndbox to open their display windows on that video output port by editing their respective configuration files:
 
 ```sh
@@ -221,7 +222,7 @@ xrandr --output DVI-I-1 --auto --primary --output HDMI-0 --off
 
 ## Step 7: Show a Secondary View of the ARSandbox
 
-If you have multiple displays connected to the PC running your AR Sandbox, and have done the multi-screen setup in Step 18, then you can show a second display window that does not just replicate the projected view shown in the sandbox itself, but that can show the captured 3D topography from arbitrary points of view, in full 3D, as explained in this video.
+If you have multiple displays connected to the PC running your AR Sandbox, and have done the multi-screen setup in [Step 6](#step-6-use-multiple-screens), then you can show a second display window that does not just replicate the projected view shown in the sandbox itself, but that can show the captured 3D topography from arbitrary points of view, in full 3D, as explained in this video.
 
 To create a secondary view, you first need to edit the SARndbox application's configuration file and instruct it to open a second window on a different display. Run in a terminal window:
 
@@ -260,20 +261,21 @@ section Vrui
 endsection
 ```
 
-where `<port name>` is replaced with the name of the actual video output port to which your non-sandbox display is connected, as gathered from your xrandr report in Step 18.
+where `<port name>` is replaced with the name of the actual video output port to which your non-sandbox display is connected, as gathered from your xrandr report in [Step 6](#step-6-use-multiple-screens).
 
-After the above changes, SARndbox will open a second window on the secondary display, but it will still show the same fixed projector view as the main projector, possibly squished due to a different aspect ratio on the secondary display. To allow an independent view on the secondary display, you have to modify SARndbox's command line. The best way to do this is to edit the RunSARndbox.sh shell script you created in Step 16. In a terminal window, run:
+After the above changes, SARndbox will open a second window on the secondary display, but it will still show the same fixed projector view as the main projector, possibly squished due to a different aspect ratio on the secondary display. To allow an independent view on the secondary display, you have to modify SARndbox's command line. The best way to do this is to edit the RunSARndbox.sh shell script you created in [Step 4](#step-4-create-a-desktop-icon-to-launch-the-arsandbox). In a terminal window, run:
 
 ```sh
 xed ~/src/SARndbox-2.8/RunSARndbox.sh
 ```
 
-The simple command line entered in Step 16 only has two arguments:
+The simple command line entered in [Step 4](#step-4-create-a-desktop-icon-to-launch-the-arsandbox) only has two arguments:
+
 ```sh
 ./bin/SARndbox -uhm -fpv
 ```
 
-These instruct SARndbox, in order, to apply the default elevation color map, and to lock the display to the projector calibration matrix captured in Step 11. By default, SARndbox applies display options from the command line to all windows it opens, but this can be overridden by using a `-wi` `<window index>` argument, where `<window index>` is the zero-based index of a window. After seeing that argument, SARndbox will apply all following display options to all windows with the same or a larger index, and also reset the `-fpv` option. Thus, append the following to SARndbox's command line:
+These instruct SARndbox, in order, to apply the default elevation color map, and to lock the display to the projector calibration matrix captured in [Step 6 in "System Integration, Configuration, and Calibration"](#step-6-projector-or-camera-calibration). By default, SARndbox applies display options from the command line to all windows it opens, but this can be overridden by using a `-wi` `<window index>` argument, where `<window index>` is the zero-based index of a window. After seeing that argument, SARndbox will apply all following display options to all windows with the same or a larger index, and also reset the `-fpv` option. Thus, append the following to SARndbox's command line:
 
 ```sh
 ./bin/SARndbox -uhm -fpv -wi 1 -rws
