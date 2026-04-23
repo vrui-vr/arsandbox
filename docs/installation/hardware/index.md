@@ -1,8 +1,5 @@
 # Setup and calibration
 
-<!-- define abbreviations -->
-*[ARSandbox]: Augmented Reality Sandbox
-
 Before the Augmented Reality Sandbox can be used, the hardware (physical sandbox, Kinect camera, and projector) has to be set up properly, and the various components have to be calibrated internally and with respect to each other. While the sandbox can be run in "trial mode" with very little required setup, for the full effect the following steps have to be performed in order:
 
 1. (*Optional*) Calculate per-pixel depth correction coefficients for the Kinect camera.

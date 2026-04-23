@@ -1,21 +1,5 @@
 # Post-Installation Setup and Fine-Tuning
 
-<!-- define abbreviations -->
-*[ARSandbox]: Augmented Reality Sandbox
-
-
-## Table of Contents
-
-- [Post-Installation Setup and Fine-Tuning](#Post-Installation Setup and Fine-Tuning)
-    - [Table of Contents](#table-of-contents)
-    - [Step 1: Create Per-application Configuration File Directory](#step-1-create-per-application-configuration-file-directory)
-    - [Step 2: Create Configuration File for CalibrateProjector](#step-2-create-configuration-file-for-calibrateprojector)
-    - [Step 3: Create Configuration File for SARndbox](#step-3-create-configuration-file-for-sarndbox)
-    - [Step 4: Create a Desktop Icon to Launch the ARSandbox](#step-4-create-a-desktop-icon-to-launch-the-arsandbox)
-    - [Step 5: Launch the ARSandbox on Login or Boot](#step-5-launch-the-arsandbox-on-login-or-boot)
-    - [Step 6: Use Multiple Screens](#step-6-use-multiple-screens)
-    - [Step 7: Show a Secondary View of the ARSandbox](#step-7-show-a-secondary-view-of-the-arsandbox)
-
 The earlier instructions get the ARSandbox software installed and running, but there are still a lot of (optional) improvements to be made. The following steps automate full-screen display and tool bindings, configure multiple displays, etc.
 
 ## Step 1: Create Per-application Configuration File Directory
@@ -43,7 +27,7 @@ section Vrui
             # Force the application's window to full-screen mode:
             windowFullscreen true
         endsection
-        
+
         section Tools
             section DefaultTools
                 # Bind a tie point capture tool to the "1" and "2" keys:
@@ -57,9 +41,9 @@ section Vrui
 endsection
 ```
 
-then save the new file and exit from the text editor. 
+then save the new file and exit from the text editor.
 
-???+ tip   
+???+ tip
     You can copy & paste the above text by highlighting the entire contents of the text box with the left mouse button, then moving the mouse over into the empty text editor window, and pressing the middle mouse button.
 
 If you now start `CalibrateProjector`, its window will cover the entire screen, with no title bars or panels remaining. If you press the ++1++ key, the program will capture a calibration tie point, and if you press the ++2++ key, it will re-capture the background, indicated by the screen turning red for two seconds.
@@ -70,7 +54,7 @@ You can replace the ++1++ and ++2++ key names in the "bindings" tag with any oth
 
 Create a configuration file for the `SARndbox` application using the `xed` text editor:
 
-```sh 
+```sh
 xed ~/.config/Vrui-8.0/Applications/SARndbox.cfg
 ```
 
@@ -81,17 +65,17 @@ section Vrui
     section Desktop
         # Disable the screen saver:
         inhibitScreenSaver true
-        
+
         section MouseAdapter
             # Hide the mouse cursor after 5 seconds of inactivity:
             mouseIdleTimeout 5.0
         endsection
-        
+
         section Window
             # Force the application's window to full-screen mode:
             windowFullscreen true
         endsection
-        
+
         section Tools
             section DefaultTools
                 # Bind a global rain/dry tool to the "1" and "2" keys:
@@ -247,15 +231,15 @@ section Vrui
         section Window
             ...
         endsection
-        
+
         section Window2
             viewerName Viewer
             screenName Screen
             windowType Mono
-            
+
             # Open the window on a specific video output port:
             outputName <port name>
-            
+
             # Open the window to full-screen mode:
             windowSize (800, 600)
             windowFullscreen true
@@ -300,7 +284,7 @@ xed ~/src/SARndbox-2.8/RunSARndbox.sh
 and change the command line to:
 
 ```sh
-./bin/SARndbox -uhm -fpv -wi 1 -rws -loadView 
+./bin/SARndbox -uhm -fpv -wi 1 -rws -loadView
 SavedViewpoint0001.view
 ```
 

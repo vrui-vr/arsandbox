@@ -1,14 +1,5 @@
 # Running the Augmented Reality Sandbox
 
-<!-- define abbreviations -->
-*[ARSandbox]: Augmented Reality Sandbox
-
-## Table of Contents
-
-- [Running the ARSandbox](#running-the-arsandbox)
-    - [Table of Contents](#table-of-contents)
-    - [Step 1: Run the ARSandbox](#step-1-run-the-arsandbox)
-
 At this point, the ARSandbox is configured, calibrated, and ready to run.
 
 ## Step 1: Run the ARSandbox

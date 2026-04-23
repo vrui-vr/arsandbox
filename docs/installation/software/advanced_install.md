@@ -1,8 +1,5 @@
 # Advanced Augmented Reality Sandbox Installation guide
 
-<!-- define abbreviations -->
-*[ARSandbox]: Augmented Reality Sandbox
-
 First, you will need to modify the build command shown in these [instructions](./simple_install.md#install-the-arsandbox)
 
 Start by navigating to the ARSandbox directory:

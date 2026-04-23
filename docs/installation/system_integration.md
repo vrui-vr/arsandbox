@@ -1,25 +1,9 @@
 # System Integration, Configuration, and Calibration
 
-<!-- define abbreviations -->
-*[ARSandbox]: Augmented Reality Sandbox
-
-## Table of Contents
-
-- [System Integration, Configuration, and Calibration](#system-integration-configuration-and-calibration)
-    - [Table of Contents](#table-of-contents)
-    - [Step 1: Connect and Configure the 3D Camera](#step-1-connect-and-configure-the-3d-camera)
-        - [Step 1a (Optional): Calculate Per-pixel Depth Correction](#step-1a-optional-calculate-per-pixel-depth-correction)
-    - [Step 2: Align the 3D Camera](#step-2-align-the-3d-camera)
-    - [Step 3: Measure Sandbox's Base Plane Equation](#step-3-measure-sandboxs-base-plane-equation)
-    - [Step 4: Measure Sandbox's 3D Box Corner Positions](#step-4-measure-sandboxs-3d-box-corner-positions)
-    - [Step 5: Align the Projector](#step-5-align-the-projector)
-    - [Step 6: Projector or Camera Calibration](#step-6-projector-or-camera-calibration)
-
-
 These installation steps connect the additional system components, specifically the 3D camera (Kinect or other camera) and the digital projector, physically align them with the sandbox for optimal image quality, and calibrate the camera with respect to the projector so that real and projected features in the sandbox line up precisely.
 
 ??? info "Heads up!"
-    Checkout the [full walk-through video](http://youtu.be/R0UyMeJ2pYc) for steps through #2, as well as those in ["Software Installation"](./software_installation.md). This video is for an older version of Linux Mint as well as older versions of the Vrui, Kinect, and ARSandbox packages. If there are any small discrepancies between the video and these instructions, ignore the video and follow these instructions. Starting at [Step 4](#step-4-measure-sandboxs-3d-box-corner-positions), reference the [ARSandbox Calibration video](https://www.youtube.com/watch?v=EW2PtRsQQr0). 
+    Checkout the [full walk-through video](http://youtu.be/R0UyMeJ2pYc) for steps through #2, as well as those in ["Software Installation"](./software_installation.md). This video is for an older version of Linux Mint as well as older versions of the Vrui, Kinect, and ARSandbox packages. If there are any small discrepancies between the video and these instructions, ignore the video and follow these instructions. Starting at [Step 4](#step-4-measure-sandboxs-3d-box-corner-positions), reference the [ARSandbox Calibration video](https://www.youtube.com/watch?v=EW2PtRsQQr0).
 
 ## Step 1: Connect and Configure the 3D Camera
 
@@ -57,10 +41,11 @@ To capture a calibration tie point, keep the camera very still and press the ++a
 Repeat this process a few times to collect anywhere between five and ten tie points, from distances between about 0.5m and 1.5m. Once done, press the ++s++ key. This will calculate per-pixel depth correction factors and write them to a calibration file in the `/usr/local/etc/Vrui-8.0/Kinect-3.10` directory. `RawKinectViewer` will print "Writing depth correction file `/usr/local/etc/Vrui-8.0/Kinect-3.10/DepthCorrection-<camera serial number>.dat`" when it is finished. If any error messages appear at this point, close `RawKinectViewer` and redo the entire process. Otherwise, close `RawKinectViewer`, install the camera in the ARSandbox, and continue with the next installation step.
 
 ## Step 2: Align the 3D Camera
+
 Align your camera so that its field of view covers the interior of your sandbox. Use `RawKinectViewer` to guide you during alignment. To start it, run in a terminal window:
 
 ```sh
-cd ~/src/SARndbox-2.8
+cd ~/src/SARndbox-*.*
 RawKinectViewer -compress 0
 ```
 
@@ -74,24 +59,24 @@ Calculate your sandbox's base plane by following the beginning of the video link
 
 To recap, you need to bind an "Extract Planes" tool from the root tool menu to some unused mouse button or keyboard key (see the note on "Tool Assignment" in [Step 3 in "Software Installation"](software_installation.md#step-3-install-the-vrui-vr-development-toolkit))for details, then select "Average Frames" from `RawKinectViewer`'s main menu, wait for the depth image display to freeze, and then draw a rectangle on the depth image by pressing and holding the button/key to which you assigned the "Extract Planes" tool. This will print the plane equation best fitting the selected rectangle to the terminal window from which you ran `RawKinectViewer`. After extracting the base plane, you should turn "Average Frames" back off in `RawKinectViewer`'s main menu.
 
-You need to enter the base plane equation (and the 3D sand surface extents in the next step) into the `BoxLayout.txt` file in `etc/SARndbox-2.8` inside the `SARndbox` source directory. To edit the file using `xed`, run in a terminal window:
+You need to enter the base plane equation (and the 3D sand surface extents in the next step) into the `BoxLayout.txt` file in `etc/SARndbox-*.*` inside the `SARndbox` source directory. To edit the file using `xed`, run in a terminal window:
 
 ```sh
-cd ~/src/SARndbox-2.8
-xed etc/SARndbox-2.8/BoxLayout.txt &
+cd ~/src/SARndbox-*.*
+xed etc/SARndbox-*.*/BoxLayout.txt &
 ```
 
 The ampersand ("&") at the end of the second command will keep the terminal window usable while the text editor is running. Now enter the base plane equation as described in the video. To copy text from a terminal window, highlight the desired text with the mouse, and then either right-click into the terminal window and select "Copy" from the pop-up menu that appears, or press ++shift+ctrl+c++. To paste into the text editor, use the "Edit" menu, or press ++ctrl+v++. Or, highlight the desired text in the terminal window with the mouse, and then move the mouse into the desired position in the text editor window and press the middle mouse button to copy and paste.
 
 `RawKinectViewer` prints two plane equations when a depth plane is extracted: the first in depth space, the second in camera space. The ARSandbox needs the second, camera-space, plane equation. After copying it, the equation has to be reformatted slightly. `RawKinectViewer` will print:
 
-```sh 
+```sh
 Camera-space plane equation: x * <some vector> = <some offset>
 ```
 
 where `<some vector>` is a three-component direction vector defining the "up" direction in camera coordinates, typically close to `(0.0, 0.0, 1.0)`. `<some offset>` is the vertical position of the measured plane underneath the camera, which is in centimeters and negative. `BoxLayout.txt` needs that plane equation in the following format, where the direction vector and the offset are separated by a comma:
 
-```sh 
+```sh
 <some vector>, <some offset>
 ```
 
@@ -100,7 +85,7 @@ where `<some vector>` is a three-component direction vector defining the "up" di
 
 ## Step 4: Measure Sandbox's 3D Box Corner Positions
 
-Measure the 3D extents of the sand surface. As of version 3.2 of the Kinect package, this can be done inside `RawKinectViewer` as well by following the instructions at [4:10 in the ARSandbox Calibration video](https://youtu.be/EW2PtRsQQr0?si=LzsieU-3FWntcHcu&t=250). Make sure to measure the box corners in the order lower-left, lower-right, upper-left, upper-right.
+Measure the 3D extents of the sand surface. As of version 3.2 of the Kinect package, this can be done inside `RawKinectViewer` as well by following the instructions at [4:10 in the ARSandbox Calibration video](https://youtu.be/EW2PtRsQQr0?si=LzsieU-3FWntcHcu&t=250). Make sure to measure the box corners in the order: lower-left, lower-right, upper-left, upper-right.
 
 To recap, you need to bind a "Measure 3D Positions" tool from the root tool menu to some unused mouse button or keyboard key (see [Step 3](#step-3-measure-sandboxs-base-plane-equation) for details), and then click on the corners of your sandbox in the depth image using the button/key to which you assigned the "Measure 3D Positions" tool. This will print a sequence of 3D positions to the terminal window from which you ran `RawKinectViewer`.
 
@@ -124,7 +109,7 @@ Ensure that this text starts in the first column of the first line, and that the
 
 Align your projector such that its image fills the interior of your sandbox. You can use the calibration grid drawn by Vrui's `XBackground` utility as a guide. In a terminal window, run:
 
-```sh 
+```sh
 XBackground
 ```
 
@@ -137,14 +122,14 @@ Slight overprojection outside of the sandbox, and any remaining keystone distort
 ## Step 6: Projector or Camera Calibration
 
 !!! warning
-    Set the window of `CalibrateProjector` to full-screen mode by pressing ++f11++ before proceeding. 
+    Set the window of `CalibrateProjector` to full-screen mode by pressing ++f11++ before proceeding.
 
 Instructions for this step start at [10:10 in the ARSandbox Calibration video](https://youtu.be/EW2PtRsQQr0?si=O3l4AQc7fXGRddkl&t=610).
 
 Calibrate the Kinect camera and the projector with respect to each other by running the `CalibrateProjector` utility:
 
 ```sh
-cd ~/src/SARndbox-2.8
+cd ~/src/SARndbox-*.*
 ./bin/CalibrateProjector -s <width> <height>
 ```
 where `<width>` and `<height>` are the width and height of your projector's image in pixels, respectively. For example, for an XGA projector like the recommended BenQ model, the command would be:
@@ -155,13 +140,13 @@ where `<width>` and `<height>` are the width and height of your projector's imag
 
 Ensure that the given image size exactly matches the size of the projector's input video signal.
 
-To recap, you need to bind a "Capture" tool from the root tool menu to two unused mouse buttons or keyboard keys to capture tie points. 
+To recap, you need to bind a "Capture" tool from the root tool menu to two unused mouse buttons or keyboard keys to capture tie points.
 
 !!! example
     To bind a "Capture" tool to the ++1++ and ++2++ keys, first press and hold ++1++. This will pop up the tool selection menu. While holding ++1++, move the mouse to highlight the "Capture" menu entry. Then let go of the ++1++ key. This will close the tool selection menu, and open a "Creating Capture Tool..." dialog prompting you to press another key for tool function "Capture Background." Now press and release the ++2++ key. This will close the dialog, and finish tool assignment. Afterwards, press and release ++1++ to capture a tie point and advance calibration, and press and release ++2++ to re-capture the background sand surface after you have made any changes to it, such as digging a hole to capture a low tie point.
 
 <!-- organization of paragraphs might not be optimal -->
-!!! warning 
+!!! warning
     Please read the preceding example carefully and follow its instructions precisely. If you get a red screen in response to pressing a key/button during calibration, you are pressing the wrong key/button. The first assigned tool key (++1++ in the instructions above) will capture a tie point and advance calibration, i.e., move the calibration crosshairs. The second assigned tool key (++2++ in the instructions above) will re-capture the background, indicated by turning the display red for a few seconds, and not advance calibration.
 
 The calibration program expects a disk of diameter 120mm (4.7"), which is a standard CD, CD-ROM, or DVD. The easiest way to create a calibration disk is to glue a sheet of white paper to the data side of a CD or DVD, carefully cut around the edge of the CD, and draw a cross onto the paper that intersects exactly in the center of the CD's hole.

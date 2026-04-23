@@ -1,8 +1,5 @@
 # Installing the Augmented Reality Sandbox
 
-<!-- define abbreviations -->
-*[ARSandbox]: Augmented Reality Sandbox
-
 Both the simple and advanced instructions will install the ARSandbox with the standard settings.
 
 The Augmented Reality Sandbox package contains the sandbox application itself, `SARndbox`, and a calibration utility to interactively measure a transformation between the Kinect camera scanning the sandbox surface, and the projector projecting onto it. The setup procedure described below also uses several utilities from the Kinect 3D video capture project.
