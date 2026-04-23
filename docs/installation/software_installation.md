@@ -13,14 +13,13 @@ These installation steps install Linux and the ARSandbox software, including its
 
 Instructions for this step start at [0:00 in the walk-through video](https://youtu.be/R0UyMeJ2pYc?t=0m0s).
 
-Install a 64-bit version of Linux Mint with the MATE desktop environment (aka "flavor") on a blank desktop computer.
+Install a **64-bit** version of Linux Mint with the MATE desktop environment (aka "flavor") on a blank desktop computer.
 
 !!! warning
     This needs to be a real computer; the ARSandbox does not work from inside a virtual machine.
 
 If you plan to run the ARSandbox as a *computational appliance*, i.e., a closed system with no Internet connection, keyboard, mouse, or monitor besides the projector, where the ARSandbox application starts automatically when you power on the PC, you should prepare for this early on during installation of Linux. One of the installation steps is to create a user account on the new operating system. At that point, check the option to log into that account automatically, and do not assign a password. Then, after the installation is done, follow the optional steps in [Post-Installation Setup and Fine-Tuning](./post_installation.md).
  <!-- steps 16, 17  -->
-
 
 ## Step 2: Install Nvidia Driver
 
@@ -92,12 +91,12 @@ rm ~/Build-Ubuntu.sh
 
 While inside the spinning globe application that was started at the end of the earlier instructions, open the application's main menu by pressing and holding the right mouse button, and check the text size of the menu items. Is the menu readable? Is the text tiny or gigantic?
 
-A potential issue is that the Vrui toolkit tries to create a calibrated display, meaning that if an application draws a 5-inch line, that line should appear on the screen exactly 5 inches long. This feature relies on a connected display reporting its correct size to the operating system. While that works for most computer monitors, it does not work for projectors---a projector does not know its display size, as that depends on throw distance and zoom factor. As a result, projectors often report no or wildly inaccurate display sizes, and Vrui messes up by taking those at face value. In short, Vrui's automatic screen size feature might have to be disabled to work in an ARSandbox context.
+A potential issue is that the Vrui toolkit tries to create a calibrated display, meaning that if an application draws a 5-inch line, that line should appear on the screen exactly 5 inches long. This feature relies on a connected display reporting its correct size to the operating system. While that works for most computer monitors, it does not work for projectorsa projector does not know its display size, as that depends on throw distance and zoom factor. As a result, projectors often report no or wildly inaccurate display sizes, and Vrui messes up by taking those at face value. In short, Vrui's automatic screen size feature might have to be disabled to work in an ARSandbox context.
 
-The best way to disable this feature for all Vrui applications is to edit Vrui's central configuration file, `/usr/local/etc/Vrui-8.0/Vrui.cfg`, with the `xed` text editor. In a terminal window, run:
+The best way to disable this feature for all Vrui applications is to edit Vrui's central configuration file, `/usr/local/etc/Vrui-*.*/Vrui.cfg`, with the `xed` text editor. In a terminal window, run:
 
 !!! warning
-    Make sure the command below uses the correct Vrui version (*.*)!
+    Make sure the command below uses the correct Vrui version (`*.*`)!
 
 ```sh
 sudo xed /usr/local/etc/Vrui-*.*/Vrui.cfg
