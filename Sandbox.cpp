@@ -671,6 +671,9 @@ void printUsage(void)
 	std::cout<<"  -sm <snow melt rate>"<<std::endl;
 	std::cout<<"     Sets the rate at which snow melts in cm/s"<<std::endl;
 	std::cout<<"     Default: 0.0625 cm/s"<<std::endl;
+	std::cout<<"  -hemd <hand extractor max depth diff>"<<std::endl;
+	std::cout<<"     Sets the maximum blob depth difference for the hand extractor in depth units"<<std::endl;
+	std::cout<<"     Default: 1 depth unit"<<std::endl;
 	std::cout<<"  -rer <min rain elevation> <max rain elevation>"<<std::endl;
 	std::cout<<"     Sets the elevation range of the rain cloud level relative to the ground"<<std::endl;
 	std::cout<<"     plane in cm"<<std::endl;
@@ -773,6 +776,7 @@ Sandbox::Sandbox(int& argc,char**& argv)
 	waterSpeed=cfg.retrieveValue<double>("./waterSpeed",1.0);
 	waterMaxSteps=cfg.retrieveValue<unsigned int>("./waterMaxSteps",30U);
 	float waterMinTimeStep=cfg.retrieveValue<float>("./waterMinTimeStep",0.0f);
+	int handExtractorMaxDiff=1;
 	Math::Interval<double> rainElevationRange=cfg.retrieveValue<Math::Interval<double> >("./rainElevationRange",Math::Interval<double>(-1000.0,1000.0));
 	rainStrength=cfg.retrieveValue<GLfloat>("./rainStrength",0.25f);
 	double snowLine=cfg.retrieveValue<double>("./snowLine",1000.0);
@@ -897,6 +901,11 @@ Sandbox::Sandbox(int& argc,char**& argv)
 			else if(strcasecmp(argv[i]+1,"weng")==0)
 				{
 				engineering=true;
+				}
+			else if(strcasecmp(argv[i]+1,"hemd")==0)
+				{
+				++i;
+				handExtractorMaxDiff=atoi(argv[i]);
 				}
 			else if(strcasecmp(argv[i]+1,"rer")==0)
 				{
@@ -1207,6 +1216,7 @@ Sandbox::Sandbox(int& argc,char**& argv)
 		
 		/* Create the hand extractor object: */
 		handExtractor=new HandExtractor(frameSize,pixelDepthCorrection,cameraIps.depthProjection);
+		handExtractor->setMaxDepthDist(handExtractorMaxDiff);
 		
 		/* Register a render function with the water table: */
 		addWaterFunction=Misc::createFunctionCall(this,&Sandbox::addWater);

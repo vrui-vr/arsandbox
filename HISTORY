@@ -210,3 +210,5 @@ SARndbox-5.2:
 - Changed behavior of WaterTable2 constructor to limit water rendering
   to a rectangle fitting inside the box corner quadrilateral.
 - Added tie point control tools to CalibrateProjector.
+- Added -hemd option to SARndbox to set the maximum intra-blob depth
+  distance for the hand extractor.
