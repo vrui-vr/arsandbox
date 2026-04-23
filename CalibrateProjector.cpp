@@ -92,6 +92,18 @@ void CalibrateProjector::CaptureTool::buttonCallback(int buttonSlotIndex,Vrui::I
 Methods of class CalibrateProjector:
 ***********************************/
 
+void CalibrateProjector::setTiePointIndex(int newTiePointIndex)
+	{
+	/* Store the new tie point index: */
+	tiePointIndex=newTiePointIndex;
+	
+	/* Calculate the screen-space position of the next tie point: */
+	int xIndex=tiePointIndex%numTiePoints[0];
+	int yIndex=(tiePointIndex/numTiePoints[0])%numTiePoints[1];
+	tiePointX=(xIndex+1)*imageSize[0]/(numTiePoints[0]+1);
+	tiePointY=(yIndex+1)*imageSize[1]/(numTiePoints[1]+1);
+	}
+
 void CalibrateProjector::depthStreamingCallback(const Kinect::FrameBuffer& frameBuffer)
 	{
 	/* Forward depth frame to the sphere extractor: */
@@ -148,13 +160,6 @@ CalibrateProjector::CalibrateProjector(int& argc,char**& argv)
 	 tiePointIndex(0),
 	 haveProjection(false),projection(4,4)
 	{
-	/* Register the custom tool class: */
-	CaptureToolFactory* toolFactory1=new CaptureToolFactory("CaptureTool","Capture",0,*Vrui::getToolManager());
-	toolFactory1->setNumButtons(2);
-	toolFactory1->setButtonFunction(0,"Capture Tie Point");
-	toolFactory1->setButtonFunction(1,"Capture Background");
-	Vrui::getToolManager()->addClass(toolFactory1,Vrui::ToolManager::defaultToolFactoryDestructor);
-	
 	/* Process command line parameters: */
 	bool printHelp=false;
 	std::string sandboxLayoutFileName=CONFIG_CONFIGDIR;
@@ -330,6 +335,9 @@ CalibrateProjector::CalibrateProjector(int& argc,char**& argv)
 			}
 		}
 	
+	/* Initialize tie point collection: */
+	setTiePointIndex(0);
+	
 	/* Open the requested 3D video source: */
 	if(remoteSource!=0)
 		{
@@ -388,6 +396,18 @@ CalibrateProjector::CalibrateProjector(int& argc,char**& argv)
 	
 	/* Start capturing the initial background frame: */
 	startBackgroundCapture();
+	
+	/* Register the custom tool class: */
+	CaptureToolFactory* toolFactory1=new CaptureToolFactory("CaptureTool","Capture",0,*Vrui::getToolManager());
+	toolFactory1->setNumButtons(2);
+	toolFactory1->setButtonFunction(0,"Capture Tie Point");
+	toolFactory1->setButtonFunction(1,"Capture Background");
+	Vrui::getToolManager()->addClass(toolFactory1,Vrui::ToolManager::defaultToolFactoryDestructor);
+	
+	/* Create additional tool classes: */
+	addEventTool("Skip Tie Point",0,0);
+	addEventTool("Undo Tie Point",0,1);
+	addEventTool("Set Tie Point",0,2);
 	}
 
 CalibrateProjector::~CalibrateProjector(void)
@@ -427,32 +447,34 @@ void CalibrateProjector::frame(void)
 		
 		if(diskValid)
 			{
-			/* Store the just-captured tie point: */
-			TiePoint tp;
-			int xIndex=tiePointIndex%numTiePoints[0];
-			int yIndex=(tiePointIndex/numTiePoints[0])%numTiePoints[1];
-			int x=(xIndex+1)*imageSize[0]/(numTiePoints[0]+1);
-			int y=(yIndex+1)*imageSize[1]/(numTiePoints[1]+1);
-			tp.p=PPoint(Scalar(x)+Scalar(0.5),Scalar(y)+Scalar(0.5));
-			tp.o=disk.center;
-			tiePoints.push_back(tp);
-			
-			/* Check if that's enough: */
-			--numCaptureFrames;
-			if(numCaptureFrames==0)
+			/* Accumulate the new disk center: */
+			diskCombiner.addPoint(disk.center);
+			}
+		
+		/* Check if all frames were captured: */
+		if(--numCaptureFrames==0)
+			{
+			/* Get the accumulated disk center: */
+			if(diskCombiner.isValid())
 				{
-				/* Stop capturing this tie point and move to the next: */
-				std::cout<<"done"<<std::endl;
-				capturingTiePoint=false;
-				++tiePointIndex;
+				/* Store the just-captured tie point: */
+				TiePoint tp;
+				tp.p=PPoint(Scalar(tiePointX)+Scalar(0.5),Scalar(tiePointY)+Scalar(0.5));
+				tp.o=diskCombiner.getPoint();
+				tiePoints.push_back(tp);
 				
 				/* Check if the calibration is complete: */
-				if(tiePointIndex>=numTiePoints[0]*numTiePoints[1])
+				if(tiePoints.size()>=(unsigned int)(numTiePoints[0]*numTiePoints[1]))
 					{
 					/* Calculate the calibration transformation: */
 					calcCalibration();
 					}
 				}
+			
+			/* Stop capturing this tie point and move to the next: */
+			std::cout<<"done"<<std::endl;
+			capturingTiePoint=false;
+			setTiePointIndex(tiePointIndex+1);
 			}
 		}
 	
@@ -562,19 +584,13 @@ void CalibrateProjector::display(GLContextData& contextData) const
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		
-		/* Calculate the screen-space position of the next tie point: */
-		int xIndex=tiePointIndex%numTiePoints[0];
-		int yIndex=(tiePointIndex/numTiePoints[0])%numTiePoints[1];
-		int x=(xIndex+1)*imageSize[0]/(numTiePoints[0]+1);
-		int y=(yIndex+1)*imageSize[1]/(numTiePoints[1]+1);
-		
 		/* Draw the next tie point: */
 		glBegin(GL_LINES);
 		glColor3f(1.0f,1.0f,1.0f);
-		glVertex2f(0.0f,float(y)+0.5f);
-		glVertex2f(float(imageSize[0]),float(y)+0.5f);
-		glVertex2f(float(x)+0.5f,0.0f);
-		glVertex2f(float(x)+0.5f,float(imageSize[1]));
+		glVertex2f(0.0f,float(tiePointY)+0.5f);
+		glVertex2f(float(imageSize[0]),float(tiePointY)+0.5f);
+		glVertex2f(float(tiePointX)+0.5f,0.0f);
+		glVertex2f(float(tiePointX)+0.5f,float(imageSize[1]));
 		glEnd();
 		
 		if(haveProjection)
@@ -609,6 +625,67 @@ void CalibrateProjector::display(GLContextData& contextData) const
 	glPopAttrib();
 	}
 
+void CalibrateProjector::eventCallback(Vrui::Application::EventID eventId,Vrui::InputDevice::ButtonCallbackData* cbData)
+	{
+	if(cbData->newButtonState)
+		{
+		switch(eventId)
+			{
+			case 0: // Skip the current tie point
+				if(!capturingTiePoint)
+					{
+					/* Increment the next tie point index: */
+					setTiePointIndex(tiePointIndex+1);
+					}
+				
+				break;
+			
+			case 1: // Undo tie point
+				if(!capturingTiePoint)
+					{
+					/* Remove the most recently captured tie point from the tie point list: */
+					if(!tiePoints.empty())
+						tiePoints.pop_back();
+					
+					/* Check if the calibration is still complete: */
+					if(tiePoints.size()>=(unsigned int)(numTiePoints[0]*numTiePoints[1]))
+						{
+						/* Calculate the calibration transformation: */
+						calcCalibration();
+						}
+					
+					/* Decrement the next tie point index: */
+					if(tiePointIndex>0)
+						setTiePointIndex(tiePointIndex-1);
+					}
+				
+				break;
+			
+			case 2: // Set tie point
+				if(!capturingTiePoint)
+					{
+					/* Get the screen-space position of the tool's input device: */
+					Vrui::Ray deviceRay=cbData->inputDevice->getRay();
+					std::pair<Vrui::VRScreen*,Vrui::Scalar> sl=Vrui::findScreen(deviceRay);
+					if(sl.first!=0)
+						{
+						/* Transform the intersection position to screen space: */
+						Vrui::Point screenPos=sl.first->getScreenTransformation().inverseTransform(deviceRay(sl.second));
+						
+						/* Calculate the screen-space tie point position: */
+						tiePointX=int(Math::floor(screenPos[0]/sl.first->getWidth()*Vrui::Scalar(imageSize[0])+Vrui::Scalar(0.5)));
+						tiePointY=int(Math::floor(screenPos[1]/sl.first->getHeight()*Vrui::Scalar(imageSize[1])+Vrui::Scalar(0.5)));
+						
+						/* Decrement the tie point index so that the current tie point will be captured after this one is done: */
+						--tiePointIndex;
+						}
+					}
+				
+				break;
+			}
+		}
+	}
+
 void CalibrateProjector::startBackgroundCapture(void)
 	{
 	/* Bail out if already capturing a tie point or background: */
@@ -635,6 +712,7 @@ void CalibrateProjector::startTiePointCapture(void)
 	/* Start capturing a new tie point: */
 	capturingTiePoint=true;
 	numCaptureFrames=numTiePointFrames;
+	diskCombiner.reset();
 	std::cout<<"CalibrateProjector: Capturing "<<numTiePointFrames<<" tie point frames..."<<std::flush;
 	}
 

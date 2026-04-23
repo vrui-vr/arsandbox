@@ -209,3 +209,4 @@ SARndbox-5.2:
   layout file.
 - Changed behavior of WaterTable2 constructor to limit water rendering
   to a rectangle fitting inside the box corner quadrilateral.
+- Added tie point control tools to CalibrateProjector.

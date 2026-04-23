@@ -1,7 +1,7 @@
 /***********************************************************************
 CalibrateProjector - Utility to calculate the calibration transformation
 of a projector into a Kinect-captured 3D space.
-Copyright (c) 2012-2018 Oliver Kreylos
+Copyright (c) 2012-2026 Oliver Kreylos
 
 This file is part of the Augmented Reality Sandbox (SARndbox).
 
@@ -31,6 +31,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 #include <Geometry/Plane.h>
 #include <Geometry/Box.h>
 #include <Geometry/OrthonormalTransformation.h>
+#include <Geometry/AffineCombiner.h>
 #include <Vrui/Application.h>
 #include <Vrui/Tool.h>
 #include <Vrui/GenericToolFactory.h>
@@ -108,12 +109,15 @@ class CalibrateProjector:public Vrui::Application
 	Threads::TripleBuffer<Kinect::DiskExtractor::DiskList> diskList; // Triple buffer of lists of extracted disks
 	std::vector<TiePoint> tiePoints; // List of collected calibration tie points
 	int tiePointIndex; // Index of the next tie point to be collected
+	int tiePointX,tiePointY; // Screen-space position of the next tie point to be captured
+	Geometry::AffineCombiner<Scalar,3> diskCombiner; // Combiner to calculate the average disk position during a tie point extraction
 	bool haveProjection; // Flag if a projection matrix has been computed
 	Math::Matrix projection; // The current projection matrix
 	
 	std::string projectionMatrixFileName; // Name of the file to which the projection matrix is saved
 	
 	/* Private methods: */
+	void setTiePointIndex(int newTiePointIndex); // Changes the index of the next tie point to be collected
 	void depthStreamingCallback(const Kinect::FrameBuffer& frameBuffer); // Callback receiving depth frames from the 3D camera
 	#if !KINECT_CONFIG_USE_SHADERPROJECTOR
 	void meshStreamingCallback(const Kinect::MeshBuffer& meshBuffer); // Callback receiving projected meshes from the 3D video projector
@@ -129,6 +133,7 @@ class CalibrateProjector:public Vrui::Application
 	/* Methods from Vrui::Application: */
 	virtual void frame(void);
 	virtual void display(GLContextData& contextData) const;
+	virtual void eventCallback(EventID eventId,Vrui::InputDevice::ButtonCallbackData* cbData);
 	
 	/* New methods: */
 	void startBackgroundCapture(void); // Starts capturing a background frame
