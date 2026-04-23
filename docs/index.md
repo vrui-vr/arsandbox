@@ -1,10 +1,6 @@
 # ARSandbox
 
-<!-- define abbreviations -->
-*[ARSandbox]: Augmented Reality Sandbox
-*[AR]: augmented reality
-
-The ARSandbox is an augmented reality (AR) application that scans a sand surface using a Kinect 3D camera and projects a topography map that is updated in real time with topographic contour lines, hillshading, and an optional real-time water flow simulation back onto the sand surface using a calibrated projector.
+The ARSandbox is an augmented reality application that scans a sand surface using a Kinect 3D camera and projects a topography map that is updated in real time with topographic contour lines, hillshading, and an optional real-time water flow simulation back onto the sand surface using a calibrated projector.
 
 The ARSandbox package contains the sandbox application itself, `SARndbox`, and a calibration utility to interactively measure a transformation between the Kinect camera scanning the sandbox surface, and the projector projecting onto it.
 

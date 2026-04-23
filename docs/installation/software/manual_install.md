@@ -1,8 +1,5 @@
 # Manual Augmented Reality Sandbox Installation guide
 
-<!-- define abbreviations -->
-*[ARSandbox]: Augmented Reality Sandbox
-
 <!-- In the following, when asked to enter something into a terminal, each
 line you are supposed to enter starts with a `$` denoting the
 terminal's command prompt. Do *not* enter that `$`, but enter
