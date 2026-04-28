@@ -347,7 +347,7 @@ CalibrateProjector::CalibrateProjector(int& argc,char**& argv)
 	else
 		{
 		/* Open the camera of selected index on the local USB bus: */
-		Kinect::DirectFrameSource* directCamera=Kinect::openDirectFrameSource(cameraIndex,false);
+		Kinect::DirectFrameSource* directCamera=Kinect::openDirectFrameSource(cameraIndex);
 		camera=directCamera;
 		
 		/* Set some camera type-specific parameters: */

@@ -212,3 +212,4 @@ SARndbox-5.2:
 - Added tie point control tools to CalibrateProjector.
 - Added -hemd option to SARndbox to set the maximum intra-blob depth
   distance for the hand extractor.
+- Adapted to API changes in Kinect library.

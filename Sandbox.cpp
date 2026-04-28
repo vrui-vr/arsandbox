@@ -1064,7 +1064,7 @@ Sandbox::Sandbox(int& argc,char**& argv)
 	else
 		{
 		/* Open the 3D camera device of the selected index: */
-		Kinect::DirectFrameSource* realCamera=Kinect::openDirectFrameSource(cameraIndex,false);
+		Kinect::DirectFrameSource* realCamera=Kinect::openDirectFrameSource(cameraIndex);
 		Misc::ConfigurationFileSection cameraConfigurationSection=cfg.getSection(cameraConfiguration.c_str());
 		realCamera->configure(cameraConfigurationSection);
 		camera=realCamera;
