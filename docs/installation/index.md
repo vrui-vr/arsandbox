@@ -1,9 +1,9 @@
 # Getting started with the ARSandbox
 
 !!! info "Heads up!"
-    Both VRUI and the Kinect packages must be installed before ARSandbox can be installed.
+    Both Vrui and the Kinect packages must be installed before ARSandbox can be installed.
 
-1. Install VRUI [(go to instructions $\rightarrow$)](https://vrui-vr.github.io/docs/vrui/installation/)
+1. Install Vrui [(go to instructions $\rightarrow$)](https://vrui-vr.github.io/docs/vrui/installation/)
 2. Install the Kinect application [(go to instructions $\rightarrow$)](https://vrui-vr.github.io/docs/kinect/installation/)
 3. Follow the step-by-step installation and set-up instructions for ARSandbox:
 
@@ -12,7 +12,7 @@
 - [Running the Augmented Reality Sandbox](docs/installation/running_arsandbox.md)
 - [Post-Installation Setup and Fine-Tuning](docs/installation/post_installation.md)
 
-These sections contain complete instructions, starting from a blank desktop PC with an Nvidia GeForce graphics processing unit (GPU). These instructions are based on the current version of the Linux Mint operating system. Due to increasing weirdness in recent versions of Mac OS X (starting with version 10.7), we can no longer recommend Mac computers and Mac OS X to drive AR Sandbox installations.
+These sections contain complete instructions, starting from a blank desktop PC with an Nvidia GeForce graphics processing unit (GPU). These instructions are based on the current version of the Linux Mint operating system. Due to increasing weirdness in recent versions of Mac OS X (starting with version 10.7), we can no longer recommend Mac computers and Mac OS X to drive ARSandbox installations.
 
 <!-- These instructions are up-to-date with the following software versions:
 Linux Mint 19.3 ("Tricia") with MATE desktop environment, 64-bit version

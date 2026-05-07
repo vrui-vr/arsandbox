@@ -4,7 +4,7 @@ Before the Augmented Reality Sandbox can be used, the hardware (physical sandbox
 
 1. (*Optional*) Calculate per-pixel depth correction coefficients for the Kinect camera.
 
-2. (*Optional*) Internally calibrate the Kinect camera. We **strongly recommend** skipping this step on initial installation, and only performing it if there are intolerable offsets between the real sand surface in the AR Sandbox and the projected topographic image.
+2. (*Optional*) Internally calibrate the Kinect camera. We **strongly recommend** skipping this step on initial installation, and only performing it if there are intolerable offsets between the real sand surface in the ARSandbox and the projected topographic image.
 
 3. Mount the Kinect camera above the sandbox so that it is looking straight down, and can see the entire sand surface. Use `RawKinectViewer` from the Kinect 3D video capture project to line up the depth camera while ignoring the color camera.
 
