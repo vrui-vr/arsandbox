@@ -91,7 +91,7 @@ To recap, you need to bind a "Measure 3D Positions" tool from the root tool menu
 
 After you have copied the box corner positions into the text editor as described in the video, save the file (via the "File" menu or by pressing ++ctrl+s++), and quit from the text editor (via the "File" menu or by pressing ++ctrl+q++ or by closing the window).
 
-After Steps [3](#step-3-measure-sandboxs-base-plane-equation) and [4](#step-4-measure-sandboxs-3d-box-corner-positions)have been completed, the contents of `BoxLayout.txt` should look like the following, with different numbers depending on your installation:
+After Steps [3](#step-3-measure-sandboxs-base-plane-equation) and [4](#step-4-measure-sandboxs-3d-box-corner-positions) have been completed, the contents of `BoxLayout.txt` should look like the following, with different numbers depending on your installation:
 
 <!-- look into formatting matrix outputs -->
 

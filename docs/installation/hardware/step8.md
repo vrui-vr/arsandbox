@@ -6,7 +6,7 @@ At this point, calibration is complete. It is now possible to run the main Augme
 ./bin/SARndbox -uhm -fpv
 ```
 
-The `-fpv` ("fix projector view") option tells the AR Sandbox to use the projector calibration matrix created in [step 7](./step7.md). The `-uhm` ("use height map") option tells the AR Sandbox to color-map the 3D surface by elevation, using the default height color map.
+The `-fpv` ("fix projector view") option tells the ARSandbox to use the projector calibration matrix created in [step 7](./step7.md). The `-uhm` ("use height map") option tells the ARSandbox to color-map the 3D surface by elevation, using the default height color map.
 
 It is very important to run the application in full-screen mode on the projector, or at least with the exact same window position and size as `CalibrateProjector` in [step 7](./step7.md). If this is not done correctly, the calibration will not work as desired. To manually switch `SARndbox` into full-screen mode after start-up, press the ++f11++ function key.
 

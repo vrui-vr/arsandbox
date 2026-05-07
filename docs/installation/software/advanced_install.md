@@ -5,10 +5,10 @@ First, you will need to modify the build command shown in these [instructions](.
 Start by navigating to the ARSandbox directory:
 
 ```sh
-cd <AR Sandbox directory>
+cd <ARSandbox directory>
 ```
 
-replacing `<AR Sandbox directory>` with the actual directory path as usual.
+replacing `<ARSandbox directory>` with the actual directory path as usual.
 
 If you already built the ARSandbox according to the [instructions](./simple_install.md#install-the-arsandbox), you first have to update its configuration. Enter into the same terminal window:
 
