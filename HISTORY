@@ -213,3 +213,5 @@ SARndbox-5.2:
 - Added -hemd option to SARndbox to set the maximum intra-blob depth
   distance for the hand extractor.
 - Adapted to API changes in Kinect library.
+- Fixed number of required uniform shader variables in
+  SurfaceRenderer::updateSinglePassSurfaceShader.

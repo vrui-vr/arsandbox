@@ -449,7 +449,7 @@ void SurfaceRenderer::updateSinglePassSurfaceShader(const GLLightTracker& lt,con
 		*******************************************************************/
 		
 		/* Override the shader's number of uniform variables to avoid problems if variables aren't used in a specific external shader: */
-		shader.setNumUniforms(16);
+		shader.setNumUniforms(18);
 		
 		/* Query common uniform variables: */
 		shader.setUniformLocation("depthSampler");
